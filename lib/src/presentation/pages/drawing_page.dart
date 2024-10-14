@@ -1,7 +1,6 @@
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_paint/config/assets/app_colors.dart';
 import 'package:flutter_paint/core/common/domain/stroke.dart';
 import 'package:flutter_paint/core/common/presentation/logic/theme_provider.dart';
 import 'package:flutter_paint/core/common/presentation/widgets/app_nav_bar.dart';
@@ -9,7 +8,8 @@ import 'package:flutter_paint/core/utils/enums/drawing_tool.dart';
 import 'package:flutter_paint/src/domain/models/drawing_canvas_options.dart';
 import 'package:flutter_paint/src/domain/models/undo_redo_stack.dart';
 import 'package:flutter_paint/src/presentation/logic/current_stroke_value_notifier.dart';
-import 'package:flutter_paint/src/presentation/widgets/widgets.dart';
+import 'package:flutter_paint/src/presentation/widgets/canvas_side_bar.dart';
+import 'package:flutter_paint/src/presentation/widgets/drawing_canvas.dart';
 import 'package:provider/provider.dart';
 
 class DrawingPage extends StatefulWidget {
@@ -73,7 +73,6 @@ class _DrawingPageState extends State<DrawingPage>
                   currentTool: drawingTool.value,
                   size: strokeSize.value,
                   strokeColor: selectedColor.value,
-                  backgroundColor: AppColors.canvasColor,
                   polygonSides: polygonSides.value,
                   showGrid: showGrid.value,
                   fillShape: filled.value,
@@ -85,6 +84,7 @@ class _DrawingPageState extends State<DrawingPage>
               );
             },
           ),
+          // CanvasSideBar         
           Positioned(
             top: kToolbarHeight,
             child: SlideTransition(
@@ -107,6 +107,7 @@ class _DrawingPageState extends State<DrawingPage>
               ),
             ),
           ),
+          // AppNavBar
           AppNavBar(
             onLeadingButtonPressed: () {
               if (animationController.isCompleted) {

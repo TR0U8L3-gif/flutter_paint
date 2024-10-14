@@ -103,22 +103,21 @@ class _DrawingCanvasState extends State<DrawingCanvas> {
                   isComplex: true,
                   painter: _DrawingCanvasPainter(
                     strokesListenable: _strokes,
+                    strokeListenable: _currentStroke,
                     backgroundColor: widget.options.backgroundColor,
                   ),
                 ),
               ),
             ),
 
-            // Draw the current stroke on top of the rest of the strokes.
             Positioned.fill(
               child: RepaintBoundary(
                 child: CustomPaint(
                   isComplex: true,
                   painter: _DrawingCanvasPainter(
-                    strokeListenable: _currentStroke,
-                    backgroundColor: widget.options.backgroundColor,
+                    // strokeListenable: _currentStroke,
+                    // backgroundColor: widget.options.backgroundColor,
                     showGridListenable: _showGrid,
-                    backgroundImageListenable: widget.backgroundImageListenable,
                   ),
                 ),
               ),
@@ -156,24 +155,9 @@ class _DrawingCanvasPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (backgroundImageListenable != null) {
-      final backgroundImage = backgroundImageListenable!.value;
 
-      if (backgroundImage != null) {
-        canvas.drawImageRect(
-          backgroundImage,
-          Rect.fromLTWH(
-            0,
-            0,
-            backgroundImage.width.toDouble(),
-            backgroundImage.height.toDouble(),
-          ),
-          Rect.fromLTWH(0, 0, size.width, size.height),
-          Paint(),
-        );
-      }
-    }
-
+    canvas.saveLayer(Rect.largest, Paint());
+    
     final strokes = List<Stroke>.from(strokesListenable?.value ?? []);
 
     if (strokeListenable?.hasStroke ?? false) {
@@ -213,7 +197,8 @@ class _DrawingCanvasPainter extends CustomPainter {
       // Eraser stroke. The eraser stroke is drawn with the background color.
       if (stroke is EraserStroke) {
         final path = _getStrokePath(stroke, size);
-        canvas.drawPath(path, paint..color = backgroundColor);
+        paint.blendMode = BlendMode.clear;
+        canvas.drawPath(path, paint);
         continue;
       }
 
@@ -285,12 +270,16 @@ class _DrawingCanvasPainter extends CustomPainter {
         canvas.drawPath(path, paint);
         continue;
       }
+
+      
     }
 
     // Draw the grid last so it's on top of everything else.
     if (showGridListenable?.value ?? false) {
       _drawGrid(size, canvas);
     }
+
+    canvas.restore();
   }
 
   void _drawGrid(Size size, Canvas canvas) {

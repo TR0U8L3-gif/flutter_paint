@@ -11,6 +11,7 @@ import 'package:flutter_paint/core/extensions/context_extensions.dart';
 import 'package:flutter_paint/core/utils/enums/drawing_tool.dart';
 import 'package:flutter_paint/src/domain/models/undo_redo_stack.dart';
 import 'package:flutter_paint/src/presentation/logic/current_stroke_value_notifier.dart';
+import 'package:flutter_paint/src/presentation/widgets/color_palette.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -58,7 +59,7 @@ class _CanvasSideBarState extends State<CanvasSideBar> {
       width: 320,
       height: 440,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer,
+        color: Theme.of(context).colorScheme.secondaryContainer,
         borderRadius: const BorderRadius.horizontal(right: Radius.circular(10)),
         boxShadow: [
           BoxShadow(
@@ -108,38 +109,59 @@ class _CanvasSideBarState extends State<CanvasSideBar> {
                       children: [
                         _IconBox(
                           iconData: FontAwesomeIcons.pencil,
-                          selected: widget.drawingTool.value == DrawingTool.pencil,
+                          selected:
+                              widget.drawingTool.value == DrawingTool.pencil,
                           onTap: () =>
                               widget.drawingTool.value = DrawingTool.pencil,
                           tooltip: 'Pencil',
                         ),
                         _IconBox(
-                          selected: widget.drawingTool.value == DrawingTool.line,
-                          onTap: () => widget.drawingTool.value = DrawingTool.line,
+                          selected:
+                              widget.drawingTool.value == DrawingTool.eraser,
+                          onTap: () =>
+                              widget.drawingTool.value = DrawingTool.eraser,
+                          tooltip: 'Eraser',
+                          iconData: FontAwesomeIcons.eraser,
+                        ),
+                        _IconBox(
+                          selected:
+                              widget.drawingTool.value == DrawingTool.line,
+                          onTap: () =>
+                              widget.drawingTool.value = DrawingTool.line,
                           tooltip: 'Line',
                           iconData: Icons.remove,
                         ),
                         _IconBox(
                           iconData: Icons.hexagon_outlined,
-                          selected: widget.drawingTool.value == DrawingTool.polygon,
+                          selected:
+                              widget.drawingTool.value == DrawingTool.polygon,
                           onTap: () =>
                               widget.drawingTool.value = DrawingTool.polygon,
                           tooltip: 'Polygon',
                         ),
                         _IconBox(
                           iconData: FontAwesomeIcons.square,
-                          selected: widget.drawingTool.value == DrawingTool.square,
+                          selected:
+                              widget.drawingTool.value == DrawingTool.square,
                           onTap: () =>
                               widget.drawingTool.value = DrawingTool.square,
                           tooltip: 'Square',
                         ),
                         _IconBox(
                           iconData: FontAwesomeIcons.circle,
-                          selected: widget.drawingTool.value == DrawingTool.circle,
+                          selected:
+                              widget.drawingTool.value == DrawingTool.circle,
                           onTap: () =>
                               widget.drawingTool.value = DrawingTool.circle,
                           tooltip: 'Circle',
                         ),
+                        // _IconBox(
+                        //   iconData: FontAwesomeIcons.text,
+                        //   selected: widget.drawingTool.value == DrawingTool.text,
+                        //   onTap: () =>
+                        //       widget.drawingTool.value = DrawingTool.text,
+                        //   tooltip: 'Text',
+                        // ),
                         _IconBox(
                           iconData: FontAwesomeIcons.ruler,
                           selected: widget.showGrid.value,
@@ -150,20 +172,23 @@ class _CanvasSideBarState extends State<CanvasSideBar> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Text(
-                          'Fill Shape: ',
-                          style: TextStyle(fontSize: 12),
-                        ),
-                        Checkbox(
-                          value: widget.filled.value,
-                          onChanged: (val) {
-                            widget.filled.value = val ?? false;
-                          },
-                        ),
-                      ],
-                    ),
+                    if (widget.drawingTool.value == DrawingTool.polygon ||
+                        widget.drawingTool.value == DrawingTool.circle ||
+                        widget.drawingTool.value == DrawingTool.square)
+                      Row(
+                        children: [
+                          const Text(
+                            'Fill Shape: ',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          Checkbox(
+                            value: widget.filled.value,
+                            onChanged: (val) {
+                              widget.filled.value = val ?? false;
+                            },
+                          ),
+                        ],
+                      ),
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 150),
                       child: widget.drawingTool.value == DrawingTool.polygon
@@ -175,6 +200,8 @@ class _CanvasSideBarState extends State<CanvasSideBar> {
                                 ),
                                 Slider(
                                   value: widget.polygonSides.value.toDouble(),
+                                  inactiveColor:
+                                      theme.tertiary.withOpacity(0.8),
                                   min: 3,
                                   max: 8,
                                   onChanged: (val) {
@@ -188,6 +215,22 @@ class _CanvasSideBarState extends State<CanvasSideBar> {
                           : const SizedBox.shrink(),
                     ),
                     const SizedBox(height: 20),
+                    if(widget.drawingTool.value != DrawingTool.eraser) ...[
+                    const Text(
+                      'Colors',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Divider(
+                      color: theme.onPrimaryContainer,
+                    ),
+                    ColorPalette(
+                      selectedColor: widget.selectedColor.value,
+                      onColorChanged: (color) {
+                        widget.selectedColor.value = color;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    ],
                     const Text(
                       'Size',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -199,12 +242,13 @@ class _CanvasSideBarState extends State<CanvasSideBar> {
                       children: [
                         const Text(
                           'Stroke Size: ',
-                          style: TextStyle(fontSize: 12),
+                          style: TextStyle(fontSize: 14),
                         ),
                         Slider(
                           value: widget.strokeSize.value,
                           min: 0,
                           max: 50,
+                          inactiveColor: theme.tertiary.withOpacity(0.8),
                           onChanged: (val) {
                             widget.strokeSize.value = val;
                           },
@@ -278,6 +322,7 @@ class _CanvasSideBarState extends State<CanvasSideBar> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
@@ -361,8 +406,8 @@ class _IconBox extends StatelessWidget {
           width: 35,
           decoration: BoxDecoration(
             border: Border.all(
-              color: selected ? theme.primary : theme.onPrimaryContainer,
-              width: 1.5,
+              color: selected ? theme.primary : Colors.transparent,
+              width: 2.4,
             ),
             borderRadius: const BorderRadius.all(Radius.circular(5)),
           ),
@@ -372,7 +417,7 @@ class _IconBox extends StatelessWidget {
             child: child ??
                 Icon(
                   iconData,
-                  color: selected ? theme.primary : theme.onPrimaryContainer,
+                  color: selected ? theme.primary : theme.tertiary,
                   size: 20,
                 ),
           ),

@@ -56,29 +56,4 @@ class ColorPalette extends StatelessWidget {
       ],
     );
   }
-
-  // void showColorWheel(BuildContext context, ValueNotifier<Color> color) {
-  //   showDialog(
-  //     context: context,
-  //     builder: (BuildContext context) {
-  //       return AlertDialog(
-  //         title: const Text('Pick a color!'),
-  //         content: SingleChildScrollView(
-  //           child: ColorPicker(
-  //             pickerColor: color.value,
-  //             onColorChanged: (value) {
-  //               color.value = value;
-  //             },
-  //           ),
-  //         ),
-  //         actions: <Widget>[
-  //           TextButton(
-  //             child: const Text('Done'),
-  //             onPressed: () => Navigator.pop(context),
-  //           ),
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
 }

@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_paint/core/common/domain/stroke.dart';
 
-class UndoRedoStack {
+class UndoRedoStack with ChangeNotifier {
   UndoRedoStack({
     required this.strokesNotifier,
     required this.currentStrokeNotifier,
   }) {
     _strokeCount = strokesNotifier.value.length;
     strokesNotifier.addListener(_strokesCountListener);
-    _canRedo = ValueNotifier(_redoStack.isNotEmpty);
   }
 
   final ValueNotifier<List<Stroke>> strokesNotifier;
@@ -17,20 +16,24 @@ class UndoRedoStack {
   List<Stroke> get _redoStack => _redoStackInternal ??= [];
   List<Stroke>? _redoStackInternal;
 
-  late final ValueNotifier<bool> _canRedo;
+  // late final ValueNotifier<bool> _canRedo;
 
-  ValueNotifier<bool> get canRedo => _canRedo;
+  // ValueNotifier<bool> get canRedo => _canRedo;
 
   late int _strokeCount;
 
   bool _isRedoing = false;
+
+  get canUndo => strokesNotifier.value.isNotEmpty;
+
+  get canRedo => _redoStack.isNotEmpty;
+
 
   void _strokesCountListener() {
     if (!_isRedoing && strokesNotifier.value.length > _strokeCount) {
       // if a new Stroke is drawn,
       // history is invalidated so clear redo stack
       _redoStack.clear();
-      _canRedo.value = false;
       _strokeCount = strokesNotifier.value.length;
     }
   }
@@ -40,7 +43,6 @@ class UndoRedoStack {
     strokesNotifier.value = [];
     _redoStackInternal?.clear();
     currentStrokeNotifier.value = null;
-    _canRedo.value = false;
   }
 
   void undo() {
@@ -49,26 +51,27 @@ class UndoRedoStack {
       final strokes = List<Stroke>.from(strokesNotifier.value);
       _redoStack.add(strokes.removeLast());
       strokesNotifier.value = strokes;
-      _canRedo.value = _redoStack.isNotEmpty;
       currentStrokeNotifier.value = null;
     }
   }
 
   void redo() {
+    if(_isRedoing) return;
     if (_redoStack.isNotEmpty) {
       _isRedoing = true;
 
       final strokes = List<Stroke>.from(strokesNotifier.value);
       strokes.add(_redoStack.removeLast());
       strokesNotifier.value = strokes;
-      _canRedo.value = _redoStack.isNotEmpty;
       _strokeCount++;
 
       _isRedoing = false;
     }
   }
 
+  @override
   void dispose() {
     strokesNotifier.removeListener(_strokesCountListener);
+    super.dispose();
   }
 }

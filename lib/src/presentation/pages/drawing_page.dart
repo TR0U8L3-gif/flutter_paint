@@ -1,9 +1,9 @@
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_paint/core/common/domain/stroke.dart';
 import 'package:flutter_paint/core/common/presentation/logic/theme_provider.dart';
 import 'package:flutter_paint/core/common/presentation/widgets/app_nav_bar.dart';
+import 'package:flutter_paint/core/extensions/drawing_tool_extensions.dart';
+import 'package:flutter_paint/core/extensions/offset_extensions.dart';
 import 'package:flutter_paint/core/utils/enums/drawing_tool.dart';
 import 'package:flutter_paint/core/utils/helpers/value_listenable_builder_7.dart';
 import 'package:flutter_paint/src/domain/models/drawing_canvas_options.dart';
@@ -52,10 +52,48 @@ class _DrawingPageState extends State<DrawingPage>
     );
   }
 
+  void _onPointerDown(PointerDownEvent event, DrawingCanvasOptions options) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final offset = box.globalToLocal(event.position);
+    // convert the offset to standard size so that it
+    // can be scaled back to the device size
+    final standardOffset = offset.scaleToStandard(box.size);
+    currentStroke.startStroke(
+      standardOffset,
+      color: options.strokeColor,
+      size: options.size,
+      opacity: options.opacity,
+      type: options.currentTool.strokeType,
+      sides: polygonSidesNotifier.value,
+      filled: filledNotifier.value,
+    );
+    setState(() {});
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final offset = box.globalToLocal(event.position);
+    // convert the offset to standard size so that it
+    // can be scaled back to the device size
+    final standardOffset = offset.scaleToStandard(box.size);
+    currentStroke.addPoint(standardOffset);
+    setState(() {});
+  }
+
+  void _onPointerUp(PointerUpEvent event) {
+    allStrokesNotifier.value = List<Stroke>.from(allStrokesNotifier.value)
+      ..add(currentStroke.value!);
+    currentStroke.clear();
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: ValueListenableBuilder7<Color, double, DrawingTool, bool, int, List, bool>(
+      body: ValueListenableBuilder7<Color, double, DrawingTool, bool, int, List,
+          bool>(
         valueListenableA: selectedColorNotifier,
         valueListenableB: strokeSizeNotifier,
         valueListenableC: drawingToolNotifier,
@@ -65,20 +103,28 @@ class _DrawingPageState extends State<DrawingPage>
         valueListenableG: showGridNotifier,
         builder: (context, selectedColor, strokeSize, drawingTool, filled,
             polygonSides, _, showGrid, __) {
+          final options = DrawingCanvasOptions(
+            currentTool: drawingTool,
+            size: strokeSize,
+            strokeColor: selectedColor,
+            polygonSides: polygonSides,
+            showGrid: showGrid,
+            fillShape: filled,
+          );
           return Stack(
             children: [
               DrawingCanvas(
-                options: DrawingCanvasOptions(
-                  currentTool: drawingTool,
-                  size: strokeSize,
-                  strokeColor: selectedColor,
-                  polygonSides: polygonSides,
-                  showGrid: showGrid,
-                  fillShape: filled,
-                ),
+                options: options,
                 canvasKey: canvasGlobalKey,
-                currentStrokeListenable: currentStroke,
-                strokesListenable: allStrokesNotifier,
+                currentStroke: currentStroke.value,
+                strokes: allStrokesNotifier.value,
+                showGrid: showGrid,
+                isDarkTheme:
+                    context.watch<ThemeProvider>().themeData.brightness ==
+                        Brightness.dark,
+                onPointerUp: _onPointerUp,
+                onPointerMove: _onPointerMove,
+                onPointerDown: (event) => _onPointerDown(event, options),
               ),
               // CanvasSideBar
               Positioned(

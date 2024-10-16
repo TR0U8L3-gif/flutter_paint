@@ -1,123 +1,66 @@
 import 'dart:math';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_paint/core/extensions/drawing_tool_extensions.dart';
 import 'package:flutter_paint/core/extensions/offset_extensions.dart';
-import 'package:flutter_paint/core/utils/enums/drawing_tool.dart';
 import 'package:flutter_paint/core/common/domain/stroke.dart';
 import 'package:flutter_paint/src/domain/models/drawing_canvas_options.dart';
-import 'package:flutter_paint/src/presentation/logic/current_stroke_value_notifier.dart';
 
-class DrawingCanvas extends StatefulWidget {
-  final ValueNotifier<List<Stroke>> strokesListenable;
-  final CurrentStrokeValueNotifier currentStrokeListenable;
-  final DrawingCanvasOptions options;
-  final Function(Stroke?)? onDrawingStrokeChanged;
-  final GlobalKey canvasKey;
-  final ValueNotifier<ui.Image?>? backgroundImageListenable;
+class DrawingCanvas extends StatelessWidget {
 
   const DrawingCanvas({
     super.key,
-    required this.strokesListenable,
-    required this.currentStrokeListenable,
-    required this.options,
-    this.onDrawingStrokeChanged,
     required this.canvasKey,
-    this.backgroundImageListenable,
+    required this.strokes,
+    required this.currentStroke,
+    required this.options,
+    required this.showGrid,
+    required this.isDarkTheme,
+    required this.onPointerUp,
+    required this.onPointerMove,
+    required this.onPointerDown,
   });
 
-  @override
-  State<DrawingCanvas> createState() => _DrawingCanvasState();
-}
-
-class _DrawingCanvasState extends State<DrawingCanvas> {
-  final _showGrid = ValueNotifier<bool>(false);
-
-  Color get strokeColor => widget.options.strokeColor;
-
-  double get size => widget.options.size;
-
-  double get opacity => widget.options.opacity;
-
-  DrawingTool get currentTool => widget.options.currentTool;
-
-  ValueNotifier<List<Stroke>> get _strokes => widget.strokesListenable;
-
-  CurrentStrokeValueNotifier get _currentStroke =>
-      widget.currentStrokeListenable;
-
-  void _onPointerDown(PointerDownEvent event) {
-    final box = context.findRenderObject() as RenderBox?;
-    if (box == null) return;
-    final offset = box.globalToLocal(event.position);
-    // convert the offset to standard size so that it
-    // can be scaled back to the device size
-    final standardOffset = offset.scaleToStandard(box.size);
-    _currentStroke.startStroke(
-      standardOffset,
-      color: strokeColor,
-      size: size,
-      opacity: opacity,
-      type: currentTool.strokeType,
-      sides: widget.options.polygonSides,
-      filled: widget.options.fillShape,
-    );
-    widget.onDrawingStrokeChanged?.call(_currentStroke.value);
-  }
-
-  void _onPointerMove(PointerMoveEvent event) {
-    final box = context.findRenderObject() as RenderBox?;
-    if (box == null) return;
-    final offset = box.globalToLocal(event.position);
-    // convert the offset to standard size so that it
-    // can be scaled back to the device size
-    final standardOffset = offset.scaleToStandard(box.size);
-    _currentStroke.addPoint(standardOffset);
-    widget.onDrawingStrokeChanged?.call(_currentStroke.value);
-  }
-
-  void _onPointerUp(PointerUpEvent event) {
-    if (!_currentStroke.hasStroke) return;
-    _strokes.value = List<Stroke>.from(_strokes.value)
-      ..add(_currentStroke.value!);
-    _currentStroke.clear();
-    widget.onDrawingStrokeChanged?.call(null);
-  }
+  final GlobalKey canvasKey;
+  final List<Stroke> strokes;
+  final Stroke? currentStroke;
+  final DrawingCanvasOptions options;
+  final bool showGrid;
+  final bool isDarkTheme;
+  final void Function(PointerUpEvent)? onPointerUp;
+  final void Function(PointerMoveEvent)? onPointerMove;
+  final void Function(PointerDownEvent)? onPointerDown;
 
   @override
   Widget build(BuildContext context) {
-    _showGrid.value = widget.options.showGrid;
     return MouseRegion(
-      cursor: currentTool.cursor,
+      cursor: options.currentTool.cursor,
       child: Listener(
-        onPointerUp: _onPointerUp,
-        onPointerMove: _onPointerMove,
-        onPointerDown: _onPointerDown,
+        onPointerUp: onPointerUp,
+        onPointerMove: onPointerMove,
+        onPointerDown: onPointerDown,
         child: Stack(
           children: [
             Positioned.fill(
               child: RepaintBoundary(
-                key: widget.canvasKey,
+                key: canvasKey,
                 child: CustomPaint(
                   isComplex: true,
                   painter: _DrawingCanvasPainter(
-                    strokesListenable: _strokes,
-                    strokeListenable: _currentStroke,
-                    backgroundColor: widget.options.backgroundColor,
+                    strokes: strokes,
+                    stroke: currentStroke,
+                    isDarkTheme: isDarkTheme,
                   ),
                 ),
               ),
             ),
-
             Positioned.fill(
               child: RepaintBoundary(
                 child: CustomPaint(
                   isComplex: true,
                   painter: _DrawingCanvasPainter(
-                    // strokeListenable: _currentStroke,
-                    // backgroundColor: widget.options.backgroundColor,
-                    showGridListenable: _showGrid,
+                    isDarkTheme: isDarkTheme,
+                    showGrid: showGrid,
                   ),
                 ),
               ),
@@ -130,152 +73,140 @@ class _DrawingCanvasState extends State<DrawingCanvas> {
 }
 
 class _DrawingCanvasPainter extends CustomPainter {
-  final ValueNotifier<List<Stroke>>? strokesListenable;
-  final CurrentStrokeValueNotifier? strokeListenable;
-  final Color backgroundColor;
-  final ValueNotifier<bool>? showGridListenable;
-  final ValueNotifier<ui.Image?>? backgroundImageListenable;
-
   _DrawingCanvasPainter({
-    this.strokesListenable,
-    this.strokeListenable,
-    this.backgroundColor = Colors.white,
-    this.showGridListenable,
-    this.backgroundImageListenable,
-  }) : super(
-          repaint: Listenable.merge(
-            [
-              strokesListenable,
-              strokeListenable,
-              showGridListenable,
-              backgroundImageListenable,
-            ],
-          ),
-        );
+     this.strokes,
+     this.stroke,
+     this.showGrid,
+     this.isDarkTheme = false,
+  });
+
+  final List<Stroke>? strokes;
+  final Stroke? stroke;
+  final bool? showGrid;
+  final bool isDarkTheme;
 
   @override
   void paint(Canvas canvas, Size size) {
-
     canvas.saveLayer(Rect.largest, Paint());
-    
-    final strokes = List<Stroke>.from(strokesListenable?.value ?? []);
 
-    if (strokeListenable?.hasStroke ?? false) {
-      strokes.add(strokeListenable!.value!);
-    }
+    if (strokes != null || stroke != null) {
+      final strokesData = List<Stroke>.from(strokes ?? []);
+      
+      if (stroke != null) strokesData.add(stroke as Stroke);
 
-    for (final stroke in strokes) {
-      final points = stroke.points;
-      if (points.isEmpty) continue;
 
-      final strokeSize = max(stroke.size, 1.0);
-      final paint = Paint()
-        ..color = stroke.color.withOpacity(stroke.opacity)
-        ..strokeWidth = strokeSize
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..style = PaintingStyle.stroke;
+      for (final strokeData in strokesData) {
+        final points = strokeData.points;
+        if (points.isEmpty) continue;
 
-      // Pencil stroke
-      if (stroke is NormalStroke) {
-        final path = _getStrokePath(stroke, size);
+        final strokeSize = max(strokeData.size, 1.0);
+        final paint = Paint()
+          ..color = strokeData.color.withOpacity(strokeData.opacity)
+          ..strokeWidth = strokeSize
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round
+          ..style = PaintingStyle.stroke;
 
-        // If the path only has one line, draw a dot.
-        if (stroke.points.length == 1) {
-          // scale the point to the standard size
-          final center = stroke.points.first.scaleFromStandard(size);
-          final radius = strokeSize / 2;
-          canvas.drawCircle(center, radius, paint..style = PaintingStyle.fill);
+        // Pencil stroke
+        if (strokeData is NormalStroke) {
+          final path = _getStrokePath(strokeData, size);
 
+          // If the path only has one line, draw a dot.
+          if (strokeData.points.length == 1) {
+            // scale the point to the standard size
+            final center = strokeData.points.first.scaleFromStandard(size);
+            final radius = strokeSize / 2;
+            canvas.drawCircle(
+                center, radius, paint..style = PaintingStyle.fill);
+
+            continue;
+          }
+
+          canvas.drawPath(path, paint);
           continue;
         }
 
-        canvas.drawPath(path, paint);
-        continue;
-      }
-
-      // Eraser stroke. The eraser stroke is drawn with the background color.
-      if (stroke is EraserStroke) {
-        final path = _getStrokePath(stroke, size);
-        paint.blendMode = BlendMode.clear;
-        canvas.drawPath(path, paint);
-        continue;
-      }
-
-      // Line stroke.
-      if (stroke is LineStroke) {
-        // scale the points to the standard size
-        final firstPoint = points.first.scaleFromStandard(size);
-        final lastPoint = points.last.scaleFromStandard(size);
-        canvas.drawLine(firstPoint, lastPoint, paint);
-        continue;
-      }
-
-      if (stroke is CircleStroke) {
-        // scale the points to the standard size
-        final firstPoint = points.first.scaleFromStandard(size);
-        final lastPoint = points.last.scaleFromStandard(size);
-        final rect = Rect.fromPoints(firstPoint, lastPoint);
-
-        if (stroke.filled) {
-          paint.style = PaintingStyle.fill;
+        // Eraser stroke. The eraser stroke is drawn with the background color.
+        if (strokeData is EraserStroke) {
+          final path = _getStrokePath(strokeData, size);
+          paint.blendMode = BlendMode.clear;
+          canvas.drawPath(path, paint);
+          continue;
         }
 
-        canvas.drawOval(rect, paint);
-        continue;
-      }
-
-      if (stroke is SquareStroke) {
-        // scale the points to the standard size
-        final firstPoint = points.first.scaleFromStandard(size);
-        final lastPoint = points.last.scaleFromStandard(size);
-        final rect = Rect.fromPoints(firstPoint, lastPoint);
-
-        if (stroke.filled) {
-          paint.style = PaintingStyle.fill;
+        // Line stroke.
+        if (strokeData is LineStroke) {
+          // scale the points to the standard size
+          final firstPoint = points.first.scaleFromStandard(size);
+          final lastPoint = points.last.scaleFromStandard(size);
+          canvas.drawLine(firstPoint, lastPoint, paint);
+          continue;
         }
 
-        canvas.drawRect(rect, paint);
-        continue;
-      }
+        if (strokeData is CircleStroke) {
+          // scale the points to the standard size
+          final firstPoint = points.first.scaleFromStandard(size);
+          final lastPoint = points.last.scaleFromStandard(size);
+          final rect = Rect.fromPoints(firstPoint, lastPoint);
 
-      if (stroke is PolygonStroke) {
-        // scale the points to the standard size
-        final firstPoint = points.first.scaleFromStandard(size);
-        final lastPoint = points.last.scaleFromStandard(size);
-        final centerPoint = (firstPoint / 2) + (lastPoint / 2);
-        final radius = (firstPoint - lastPoint).distance / 2;
-        final sides = stroke.sides;
-        final angle = (2 * pi) / sides;
-        final path = Path();
-        final double x = centerPoint.dx;
-        final double y = centerPoint.dy;
-        final double radiusX = radius;
-        final double radiusY = radius;
-        const double initialAngle = -pi / 2;
-        final double centerX = x + radiusX * cos(initialAngle);
-        final double centerY = y + radiusY * sin(initialAngle);
-        path.moveTo(centerX, centerY);
-        for (int i = 1; i <= sides; i++) {
-          final double currentAngle = initialAngle + (angle * i);
-          final double x = centerPoint.dx + radius * cos(currentAngle);
-          final double y = centerPoint.dy + radius * sin(currentAngle);
-          path.lineTo(x, y);
+          if (strokeData.filled) {
+            paint.style = PaintingStyle.fill;
+          }
+
+          canvas.drawOval(rect, paint);
+          continue;
         }
-        path.close();
 
-        if (stroke.filled) {
-          paint.style = PaintingStyle.fill;
+        if (strokeData is SquareStroke) {
+          // scale the points to the standard size
+          final firstPoint = points.first.scaleFromStandard(size);
+          final lastPoint = points.last.scaleFromStandard(size);
+          final rect = Rect.fromPoints(firstPoint, lastPoint);
+
+          if (strokeData.filled) {
+            paint.style = PaintingStyle.fill;
+          }
+
+          canvas.drawRect(rect, paint);
+          continue;
         }
-        canvas.drawPath(path, paint);
-        continue;
-      }
 
-      
+        if (strokeData is PolygonStroke) {
+          // scale the points to the standard size
+          final firstPoint = points.first.scaleFromStandard(size);
+          final lastPoint = points.last.scaleFromStandard(size);
+          final centerPoint = (firstPoint / 2) + (lastPoint / 2);
+          final radius = (firstPoint - lastPoint).distance / 2;
+          final sides = strokeData.sides;
+          final angle = (2 * pi) / sides;
+          final path = Path();
+          final double x = centerPoint.dx;
+          final double y = centerPoint.dy;
+          final double radiusX = radius;
+          final double radiusY = radius;
+          const double initialAngle = -pi / 2;
+          final double centerX = x + radiusX * cos(initialAngle);
+          final double centerY = y + radiusY * sin(initialAngle);
+          path.moveTo(centerX, centerY);
+          for (int i = 1; i <= sides; i++) {
+            final double currentAngle = initialAngle + (angle * i);
+            final double x = centerPoint.dx + radius * cos(currentAngle);
+            final double y = centerPoint.dy + radius * sin(currentAngle);
+            path.lineTo(x, y);
+          }
+          path.close();
+
+          if (strokeData.filled) {
+            paint.style = PaintingStyle.fill;
+          }
+          canvas.drawPath(path, paint);
+          continue;
+        }
+      }
     }
 
     // Draw the grid last so it's on top of everything else.
-    if (showGridListenable?.value ?? false) {
+    if (showGrid ?? false) {
       _drawGrid(size, canvas);
     }
 
@@ -289,11 +220,11 @@ class _DrawingCanvasPainter extends CustomPainter {
     const subGridStrokeWidth = 0.5; // Lighter stroke for smaller boxes
 
     final gridPaint = Paint()
-      ..color = Colors.black
+      ..color = !isDarkTheme ? Colors.black : Colors.white
       ..strokeWidth = gridStrokeWidth;
 
     final subGridPaint = Paint()
-      ..color = Colors.grey // Lighter color for the smaller grid
+      ..color = !isDarkTheme ?  Colors.grey[800]! :Colors.grey 
       ..strokeWidth = subGridStrokeWidth;
 
     // Horizontal lines for main grid
@@ -358,5 +289,5 @@ class _DrawingCanvasPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

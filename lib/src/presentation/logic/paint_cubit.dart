@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_paint/core/common/domain/stroke.dart';
 import 'package:flutter_paint/core/common/domain/undo_redo.dart';
+import 'package:flutter_paint/core/extensions/drawing_tool_extensions.dart';
 import 'package:flutter_paint/core/utils/enums/drawing_tool.dart';
 import 'package:flutter_paint/core/utils/enums/stroke_type.dart';
 
@@ -61,7 +62,10 @@ class PaintCubit extends Cubit<PaintState> {
   }
 
   PaintIdle _lastBuildState;
-  final memento = const UndoRedo<Stroke>();
+
+  final memento = UndoRedo<Stroke>();
+
+  get buildState => _lastBuildState;
 
   void _updateLastBuildState(PaintIdle state) {
     _lastBuildState = state;
@@ -98,9 +102,7 @@ class PaintCubit extends Cubit<PaintState> {
   }
 
   // current stroke
-
-  /// On stroke start
-  void startCurrentStroke(
+  Stroke _startCurrentStroke(
     Offset point, {
     Color color = const Color.fromARGB(255, 68, 255, 239),
     double size = 10,
@@ -109,7 +111,7 @@ class PaintCubit extends Cubit<PaintState> {
     int? sides,
     bool? filled,
   }) {
-    final stroke = () {
+    return () {
       if (type == StrokeType.eraser) {
         return EraserStroke(
           points: [point],
@@ -166,30 +168,125 @@ class PaintCubit extends Cubit<PaintState> {
         opacity: opacity,
       );
     }();
-
-    safeEmit(_lastBuildState.copyWith(currentStroke: () => stroke));
   }
 
-  /// Add a point to the current stroke
-  void addPointToCurrentStroke(Offset point) {
+  // drawing
+  void onPointerDown(Offset point) {
+    final currentStroke = _startCurrentStroke(
+      point,
+      color: _lastBuildState.selectedColor,
+      size: _lastBuildState.strokeSize,
+      opacity: 1,
+      type: _lastBuildState.drawingTool.strokeType,
+      sides: _lastBuildState.polygonSides,
+      filled: _lastBuildState.filled,
+    );
+    safeEmit(_lastBuildState.copyWith(currentStroke: () => currentStroke));
+  }
+
+  void onPointerMove(Offset point) {
     final points =
         List<Offset>.from(_lastBuildState.currentStroke?.points ?? [])
           ..add(point);
+    final currentStroke =
+        _lastBuildState.currentStroke?.copyWith(points: points);
+    if (currentStroke == null) return; 
     safeEmit(
       _lastBuildState.copyWith(
-        currentStroke: () =>
-            _lastBuildState.currentStroke?.copyWith(points: points),
+        currentStroke: () => currentStroke,
       ),
     );
   }
 
-  void clearCurrentStroke() {
-    safeEmit(_lastBuildState.copyWith(currentStroke: () => null));
+  void onPointerUp() {
+    final stroke = _lastBuildState.currentStroke;
+    if (stroke == null) return;
+
+    final result = memento.add(stroke);
+
+    result.fold(
+      (failure) => emit(PaintMessage(failure)),
+      (success) {
+        if (success != null) {
+          emit(PaintMessage(success));
+        }
+      },
+    );
+
+    safeEmit(
+      _lastBuildState.copyWith(
+        strokes: memento.undoStack,
+        currentStroke: () => null,
+        canUndo: memento.canUndo,
+        canRedo: memento.canRedo,
+      ),
+    );
   }
 
   void safeEmit(PaintState newState) {
     if (!isClosed) {
       emit(newState);
     }
+  }
+
+  void undo() {
+    final result = memento.undo();
+
+    result.fold((failure) => emit(PaintMessage(failure)), (success) {
+      if (success != null) {
+        emit(PaintMessage(success));
+      }
+      final strokes = List<Stroke>.from(memento.undoStack);
+
+      safeEmit(
+        _lastBuildState.copyWith(
+          strokes: strokes,
+          canUndo: memento.canUndo,
+          canRedo: memento.canRedo,
+        ),
+      );
+    });
+  }
+
+  void redo() {
+    final result = memento.redo();
+
+    result.fold(
+      (failure) => emit(PaintMessage(failure)),
+      (success) {
+        if (success != null) {
+          emit(PaintMessage(success));
+        }
+        final strokes = List<Stroke>.from(memento.undoStack);
+
+        safeEmit(
+          _lastBuildState.copyWith(
+            strokes: strokes,
+            canUndo: memento.canUndo,
+            canRedo: memento.canRedo,
+          ),
+        );
+      },
+    );
+  }
+
+  void clear() {
+    final result = memento.clear();
+
+    result.fold(
+      (failure) => emit(PaintMessage(failure)),
+      (success) {
+        if (success != null) {
+          emit(PaintMessage(success));
+        }
+        safeEmit(
+          _lastBuildState.copyWith(
+            strokes: [],
+            canUndo: memento.canUndo,
+            canRedo: memento.canRedo,
+          ),
+        );
+      },
+    );
   }
 }

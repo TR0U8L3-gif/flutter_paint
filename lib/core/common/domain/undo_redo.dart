@@ -1,11 +1,11 @@
 import 'package:fpdart/fpdart.dart';
 
 class UndoRedo<Type> {
-  const UndoRedo({
-    List<Type> undoStack = const [],
-    List<Type> redoStack = const [],
-  })  : _undoStack = undoStack,
-        _redoStack = redoStack;
+  UndoRedo({
+    List<Type>? undoStack,
+    List<Type>? redoStack,
+  })  : _undoStack = undoStack ?? [],
+        _redoStack = redoStack ?? [];
 
   final List<Type> _undoStack;
   final List<Type> _redoStack;
@@ -49,6 +49,16 @@ class UndoRedo<Type> {
       return right(null);
     } catch (e) {
       return left('Error adding item');
+    }
+  }
+
+  Either<String, String?> clear() {
+    try {
+      _undoStack.clear();
+      _redoStack.clear();
+      return right(null);
+    } catch (e) {
+      return left('Error clearing stacks');
     }
   }
 }

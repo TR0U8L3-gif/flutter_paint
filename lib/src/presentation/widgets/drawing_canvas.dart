@@ -7,14 +7,12 @@ import 'package:flutter_paint/core/common/domain/stroke.dart';
 import 'package:flutter_paint/src/domain/models/drawing_canvas_options.dart';
 
 class DrawingCanvas extends StatelessWidget {
-
   const DrawingCanvas({
     super.key,
     required this.canvasKey,
     required this.strokes,
     required this.currentStroke,
     required this.options,
-    required this.showGrid,
     required this.isDarkTheme,
     required this.onPointerUp,
     required this.onPointerMove,
@@ -25,20 +23,31 @@ class DrawingCanvas extends StatelessWidget {
   final List<Stroke> strokes;
   final Stroke? currentStroke;
   final DrawingCanvasOptions options;
-  final bool showGrid;
   final bool isDarkTheme;
-  final void Function(PointerUpEvent)? onPointerUp;
-  final void Function(PointerMoveEvent)? onPointerMove;
-  final void Function(PointerDownEvent)? onPointerDown;
+  final void Function()? onPointerUp;
+  final void Function(Offset)? onPointerMove;
+  final void Function(Offset)? onPointerDown;
 
   @override
   Widget build(BuildContext context) {
     return MouseRegion(
       cursor: options.currentTool.cursor,
       child: Listener(
-        onPointerUp: onPointerUp,
-        onPointerMove: onPointerMove,
-        onPointerDown: onPointerDown,
+        onPointerUp: (event) => onPointerUp?.call(),
+        onPointerMove: (event) {
+          final box = context.findRenderObject() as RenderBox?;
+          if (box == null) return;
+          final offset = box.globalToLocal(event.position);
+          return onPointerMove?.call(offset.scaleToStandard(box.size));
+        },
+        onPointerDown: (event) {
+          final box = context.findRenderObject() as RenderBox?;
+          if (box == null) return;
+          final offset = box.globalToLocal(event.position);
+          // convert the offset to standard size so that it
+          // can be scaled back to the device size
+          onPointerDown?.call(offset.scaleToStandard(box.size));
+        },
         child: Stack(
           children: [
             Positioned.fill(
@@ -60,7 +69,7 @@ class DrawingCanvas extends StatelessWidget {
                   isComplex: true,
                   painter: _DrawingCanvasPainter(
                     isDarkTheme: isDarkTheme,
-                    showGrid: showGrid,
+                    showGrid: options.showGrid,
                   ),
                 ),
               ),
@@ -74,10 +83,10 @@ class DrawingCanvas extends StatelessWidget {
 
 class _DrawingCanvasPainter extends CustomPainter {
   _DrawingCanvasPainter({
-     this.strokes,
-     this.stroke,
-     this.showGrid,
-     this.isDarkTheme = false,
+    this.strokes,
+    this.stroke,
+    this.showGrid,
+    this.isDarkTheme = false,
   });
 
   final List<Stroke>? strokes;
@@ -91,9 +100,8 @@ class _DrawingCanvasPainter extends CustomPainter {
 
     if (strokes != null || stroke != null) {
       final strokesData = List<Stroke>.from(strokes ?? []);
-      
-      if (stroke != null) strokesData.add(stroke as Stroke);
 
+      if (stroke != null) strokesData.add(stroke as Stroke);
 
       for (final strokeData in strokesData) {
         final points = strokeData.points;
@@ -224,7 +232,7 @@ class _DrawingCanvasPainter extends CustomPainter {
       ..strokeWidth = gridStrokeWidth;
 
     final subGridPaint = Paint()
-      ..color = !isDarkTheme ?  Colors.grey[800]! :Colors.grey 
+      ..color = !isDarkTheme ? Colors.grey[800]! : Colors.grey
       ..strokeWidth = subGridStrokeWidth;
 
     // Horizontal lines for main grid

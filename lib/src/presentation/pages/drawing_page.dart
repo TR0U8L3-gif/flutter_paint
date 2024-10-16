@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_paint/core/common/presentation/logic/theme_provider.dart';
 import 'package:flutter_paint/core/common/presentation/widgets/app_nav_bar.dart';
-import 'package:flutter_paint/src/domain/models/drawing_canvas_options.dart';
+import 'package:flutter_paint/src/data/data_source/paint_local_data_source.dart';
+import 'package:flutter_paint/src/data/repositories/paint_repository_impl.dart';
+import 'package:flutter_paint/src/domain/entites/drawing_canvas_options.dart';
 import 'package:flutter_paint/src/presentation/logic/paint_cubit.dart';
 import 'package:flutter_paint/src/presentation/widgets/canvas_side_bar.dart';
 import 'package:flutter_paint/src/presentation/widgets/drawing_canvas.dart';
@@ -34,7 +36,11 @@ class _DrawingPageState extends State<DrawingPage>
   Widget build(BuildContext context) {
     return Scaffold(
       body: BlocProvider(
-        create: (context) => PaintCubit(),
+        create: (context) => PaintCubit(
+          paintRepository: PaintRepositoryImpl(
+            localDataSource: PaintLocalDataSourceImpl(),
+          ),
+        ),
         child: BlocConsumer<PaintCubit, PaintState>(
           listener: (context, state) {
             if (state is PaintMessage) {
@@ -104,7 +110,7 @@ class _DrawingPageState extends State<DrawingPage>
                       onUndo: paintCubit.undo,
                       onRedo: paintCubit.redo,
                       onClear: paintCubit.clear,
-                      saveFile: (boundary, extension) {},
+                      saveFile: paintCubit.saveFile,
                     ),
                   ),
                 ),
@@ -129,48 +135,3 @@ class _DrawingPageState extends State<DrawingPage>
     );
   }
 }
-
-// add it to domain and data layer
-//
-// Future<String> saveFile(Uint8List bytes, String extension) async {
-//   try {
-//     String directoryPath;
-
-//     if (Platform.isAndroid || Platform.isIOS) {
-//       // Get the external storage directory for Android and iOS
-//       final directory = await getExternalStorageDirectory();
-//       if (directory == null) {
-//         return ('Could not access external storage.');
-//       }
-//       directoryPath = directory.path;
-//     } else if (Platform.isWindows) {
-//       // Get the Documents directory for Windows
-//       final directory = await getApplicationDocumentsDirectory();
-//       directoryPath = directory.path;
-//     } else {
-//       return ('Unsupported platform');
-//     }
-
-//     // Define the file name with a unique timestamp
-//     final String fileName =
-//         'file_${DateTime.now().millisecondsSinceEpoch}.$extension';
-//     final String filePath = '$directoryPath/$fileName';
-
-//     // Create the file and write the bytes to it
-//     final File file = File(filePath);
-//     await file.writeAsBytes(bytes);
-
-//     return ('File saved at: $filePath');
-//   } catch (e) {
-//     return ('Error saving file: $e');
-//   }
-// }
-
-// Future<Uint8List?> getBytes() async {
-//   RenderRepaintBoundary boundary = canvasGlobalKey.currentContext
-//       ?.findRenderObject() as RenderRepaintBoundary;
-//   ui.Image image = await boundary.toImage();
-//   ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-//   Uint8List? pngBytes = byteData?.buffer.asUint8List();
-//   return pngBytes;
-// }

@@ -1,10 +1,12 @@
 part of 'paint_cubit.dart';
 
 @immutable
-abstract class PaintState extends Equatable {}
+abstract class PaintState extends Equatable {
+  const PaintState();
+}
 
 final class PaintIdle extends PaintState {
-  PaintIdle({
+  const PaintIdle({
     required this.selectedColor,
     required this.strokeSize,
     required this.drawingTool,
@@ -71,7 +73,7 @@ final class PaintIdle extends PaintState {
 }
 
 final class PaintMessage extends PaintState {
-  PaintMessage(this.message);
+  const PaintMessage(this.message);
 
   final String message;
 

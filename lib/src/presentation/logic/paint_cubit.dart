@@ -4,52 +4,34 @@ import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_paint/core/common/domain/stroke.dart';
 import 'package:flutter_paint/core/common/domain/undo_redo.dart';
 import 'package:flutter_paint/core/extensions/drawing_tool_extensions.dart';
 import 'package:flutter_paint/core/utils/enums/drawing_tool.dart';
 import 'package:flutter_paint/core/utils/enums/stroke_type.dart';
+import 'package:flutter_paint/src/domain/repositories/paint_repository.dart';
 
 part 'paint_state.dart';
 
+const _initialState = PaintIdle(
+  selectedColor: Color.fromARGB(255, 68, 255, 239),
+  strokeSize: 10,
+  drawingTool: DrawingTool.pencil,
+  filled: false,
+  polygonSides: 3,
+  showGrid: false,
+  strokes: const [],
+  currentStroke: null,
+  canUndo: false,
+  canRedo: false,
+);
+
 class PaintCubit extends Cubit<PaintState> {
   PaintCubit({
-    Color selectedColor = Colors.black,
-    double strokeSize = 10.0,
-    DrawingTool drawingTool = DrawingTool.pencil,
-    bool filled = false,
-    int polygonSides = 3,
-    bool showGrid = false,
-    List<Stroke> strokes = const [],
-    Stroke? currentStroke,
-    bool canUndo = false,
-    bool canRedo = false,
-  })  : _lastBuildState = PaintIdle(
-          selectedColor: selectedColor,
-          strokeSize: strokeSize,
-          drawingTool: drawingTool,
-          filled: filled,
-          polygonSides: polygonSides,
-          showGrid: showGrid,
-          strokes: strokes,
-          currentStroke: currentStroke,
-          canUndo: canUndo,
-          canRedo: canRedo,
-        ),
-        super(
-          PaintIdle(
-            selectedColor: selectedColor,
-            strokeSize: strokeSize,
-            drawingTool: drawingTool,
-            filled: filled,
-            polygonSides: polygonSides,
-            showGrid: showGrid,
-            strokes: strokes,
-            currentStroke: currentStroke,
-            canUndo: canUndo,
-            canRedo: canRedo,
-          ),
-        ) {
+    required PaintRepository paintRepository,
+  })  : _paintRepository = paintRepository,
+        super(_initialState) {
     _initializeCubit();
   }
 
@@ -61,7 +43,9 @@ class PaintCubit extends Cubit<PaintState> {
     });
   }
 
-  PaintIdle _lastBuildState;
+  final PaintRepository _paintRepository;
+
+  PaintIdle _lastBuildState = _initialState;
 
   final memento = UndoRedo<Stroke>();
 
@@ -190,7 +174,7 @@ class PaintCubit extends Cubit<PaintState> {
           ..add(point);
     final currentStroke =
         _lastBuildState.currentStroke?.copyWith(points: points);
-    if (currentStroke == null) return; 
+    if (currentStroke == null) return;
     safeEmit(
       _lastBuildState.copyWith(
         currentStroke: () => currentStroke,
@@ -288,5 +272,23 @@ class PaintCubit extends Cubit<PaintState> {
         );
       },
     );
+  }
+
+  void saveFile(RenderRepaintBoundary? boundary, String extension) {
+    if(boundary == null) {
+      emit(const PaintMessage('Error saving file: boundary is null'));
+      return;
+    }
+    emit(const PaintMessage('Saving file...'));
+    _paintRepository.saveFile(boundary, extension).then((result) {
+      result.fold(
+        (failure) => emit(PaintMessage(failure)),
+        (success) {
+          if (success != null) {
+            emit(PaintMessage(success));
+          }
+        },
+      );
+    });
   }
 }

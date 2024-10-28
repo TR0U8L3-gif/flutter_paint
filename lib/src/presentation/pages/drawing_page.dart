@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_paint/config/injectable/injectable.dart';
 import 'package:flutter_paint/core/common/presentation/logic/theme_provider.dart';
 import 'package:flutter_paint/core/common/presentation/widgets/app_nav_bar.dart';
 import 'package:flutter_paint/src/data/data_source/paint_local_data_source.dart';
@@ -36,11 +37,7 @@ class _DrawingPageState extends State<DrawingPage>
   Widget build(BuildContext context) {
     return Scaffold(
       body: BlocProvider(
-        create: (context) => PaintCubit(
-          paintRepository: PaintRepositoryImpl(
-            localDataSource: PaintLocalDataSourceImpl(),
-          ),
-        ),
+        create: (context) => locator<PaintCubit>(),
         child: BlocConsumer<PaintCubit, PaintState>(
           listener: (context, state) {
             if (state is PaintMessage) {

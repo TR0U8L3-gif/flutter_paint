@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_paint/config/assets/theme.dart';
+import 'package:injectable/injectable.dart';
 
+@singleton
 class ThemeProvider extends ChangeNotifier {
   Brightness _brightness = Brightness.light;
 

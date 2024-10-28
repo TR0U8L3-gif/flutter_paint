@@ -1,8 +1,5 @@
-import 'dart:ui';
-
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_paint/core/common/domain/stroke.dart';
@@ -10,7 +7,8 @@ import 'package:flutter_paint/core/common/domain/undo_redo.dart';
 import 'package:flutter_paint/core/extensions/drawing_tool_extensions.dart';
 import 'package:flutter_paint/core/utils/enums/drawing_tool.dart';
 import 'package:flutter_paint/core/utils/enums/stroke_type.dart';
-import 'package:flutter_paint/src/domain/repositories/paint_repository.dart';
+import 'package:flutter_paint/src/domain/usecases/save_file_use_case.dart';
+import 'package:injectable/injectable.dart';
 
 part 'paint_state.dart';
 
@@ -21,16 +19,18 @@ const _initialState = PaintIdle(
   filled: false,
   polygonSides: 3,
   showGrid: false,
-  strokes: const [],
+  strokes: [],
   currentStroke: null,
   canUndo: false,
   canRedo: false,
 );
 
+
+@injectable
 class PaintCubit extends Cubit<PaintState> {
   PaintCubit({
-    required PaintRepository paintRepository,
-  })  : _paintRepository = paintRepository,
+    required SaveFileUseCase saveFileUseCase,
+  })  : _saveFileUseCase = saveFileUseCase,
         super(_initialState) {
     _initializeCubit();
   }
@@ -43,7 +43,7 @@ class PaintCubit extends Cubit<PaintState> {
     });
   }
 
-  final PaintRepository _paintRepository;
+  final SaveFileUseCase _saveFileUseCase;
 
   PaintIdle _lastBuildState = _initialState;
 
@@ -275,14 +275,19 @@ class PaintCubit extends Cubit<PaintState> {
   }
 
   void saveFile(RenderRepaintBoundary? boundary, String extension) {
-    if(boundary == null) {
+    if (boundary == null) {
       emit(const PaintMessage('Error saving file: boundary is null'));
       return;
     }
     emit(const PaintMessage('Saving file...'));
-    _paintRepository.saveFile(boundary, extension).then((result) {
+    _saveFileUseCase
+        .call(SaveFileUseCaseParams(
+      boundary: boundary,
+      extension: extension,
+    ))
+        .then((result) {
       result.fold(
-        (failure) => emit(PaintMessage(failure)),
+        (failure) => emit(PaintMessage(failure.message ?? 'Unknown error saving file')),
         (success) {
           if (success != null) {
             emit(PaintMessage(success));

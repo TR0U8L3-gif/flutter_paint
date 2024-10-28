@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_paint/config/injectable/injectable.dart';
 import 'package:flutter_paint/core/common/presentation/logic/theme_provider.dart';
 import 'package:flutter_paint/src/presentation/pages/drawing_page.dart';
 import 'package:provider/provider.dart';
@@ -9,7 +10,7 @@ class FlutterPaint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
+      create: (_) => locator<ThemeProvider>(),
       builder: (context, child) => MaterialApp(
         title: "Flutter Paint",
         theme: context.watch<ThemeProvider>().themeData,

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
+import 'package:injectable/injectable.dart';
 import 'package:path_provider/path_provider.dart';
 
 abstract class PaintLocalDataSource {
@@ -10,6 +11,7 @@ abstract class PaintLocalDataSource {
   Future<String> saveFile(RenderRepaintBoundary boundary, String extension);
 }
 
+@Singleton(as: PaintLocalDataSource)
 class PaintLocalDataSourceImpl implements PaintLocalDataSource {
   @override
   Future<String> saveFile(RenderRepaintBoundary boundary, String extension) async {

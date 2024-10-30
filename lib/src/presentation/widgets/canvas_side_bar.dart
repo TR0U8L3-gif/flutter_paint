@@ -9,6 +9,7 @@ class CanvasSideBar extends StatelessWidget {
   const CanvasSideBar({
     super.key,
     required this.selectedColor,
+    required this.additionalColor,
     required this.selectedStrokeSize,
     required this.selectedDrawingTool,
     required this.canvasGlobalKey,
@@ -19,6 +20,7 @@ class CanvasSideBar extends StatelessWidget {
     required this.canRedo,
     required this.onFilledChanged,
     required this.onColorChanged,
+    required this.onAdditionalColorChanged,
     required this.onGridShowedChanged,
     required this.onStrokeSizeChanged,
     required this.onPolygonSidesChanged,
@@ -31,7 +33,8 @@ class CanvasSideBar extends StatelessWidget {
 
   final GlobalKey canvasGlobalKey;
 
-  final Color selectedColor;
+  final Color? selectedColor;
+  final Color additionalColor;
   final double selectedStrokeSize;
   final DrawingTool selectedDrawingTool;
   final int selectedPolygonSides;
@@ -42,6 +45,7 @@ class CanvasSideBar extends StatelessWidget {
 
   final void Function(bool isFilled) onFilledChanged;
   final void Function(Color selectedColor) onColorChanged;
+  final void Function() onAdditionalColorChanged;
   final void Function(bool isGridShowed) onGridShowedChanged;
   final void Function(double selectedStrokeSize) onStrokeSizeChanged;
   final void Function(int selectedPolygonSides) onPolygonSidesChanged;
@@ -190,7 +194,9 @@ class CanvasSideBar extends StatelessWidget {
                 ),
                 ColorPalette(
                   selectedColor: selectedColor,
+                  additionalColor: additionalColor,
                   onColorChanged: (color) => onColorChanged(color),
+                  onAdditionalColorChanged: onAdditionalColorChanged,
                 ),
                 const SizedBox(height: 20),
               ],

@@ -17,9 +17,10 @@ final class PaintIdle extends PaintState {
     required this.currentStroke,
     required this.canUndo,
     required this.canRedo,
+    required this.additionalColor,
   });
 
-  final Color selectedColor;
+  final Color? selectedColor;
   final double strokeSize;
   final DrawingTool drawingTool;
   final bool filled;
@@ -29,9 +30,10 @@ final class PaintIdle extends PaintState {
   final Stroke? currentStroke;
   final bool canUndo;
   final bool canRedo;
+  final Color additionalColor;
 
   PaintIdle copyWith({
-    Color? selectedColor,
+    Color? Function()? selectedColor,
     double? strokeSize,
     DrawingTool? drawingTool,
     bool? filled,
@@ -41,9 +43,10 @@ final class PaintIdle extends PaintState {
     Stroke? Function()? currentStroke,
     bool? canUndo,
     bool? canRedo,
+    Color? additionalColor,
   }) {
     return PaintIdle(
-      selectedColor: selectedColor ?? this.selectedColor,
+      selectedColor: selectedColor != null ? selectedColor() : this.selectedColor,
       strokeSize: strokeSize ?? this.strokeSize,
       drawingTool: drawingTool ?? this.drawingTool,
       filled: filled ?? this.filled,
@@ -54,12 +57,13 @@ final class PaintIdle extends PaintState {
           currentStroke != null ? currentStroke() : this.currentStroke,
       canUndo: canUndo ?? this.canUndo,
       canRedo: canRedo ?? this.canRedo,
+      additionalColor: additionalColor ?? this.additionalColor,
     );
   }
 
   @override
   List<Object> get props => [
-        selectedColor,
+        selectedColor ?? 'additionalColor',
         strokeSize,
         drawingTool,
         filled,
@@ -69,6 +73,7 @@ final class PaintIdle extends PaintState {
         currentStroke ?? 'currentStroke',
         canUndo,
         canRedo,
+        additionalColor,
       ];
 }
 

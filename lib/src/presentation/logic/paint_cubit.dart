@@ -13,7 +13,7 @@ import 'package:injectable/injectable.dart';
 part 'paint_state.dart';
 
 const _initialState = PaintIdle(
-  selectedColor: Color.fromARGB(255, 68, 255, 239),
+  selectedColor: Colors.blue,
   strokeSize: 10,
   drawingTool: DrawingTool.pencil,
   filled: false,
@@ -23,6 +23,7 @@ const _initialState = PaintIdle(
   currentStroke: null,
   canUndo: false,
   canRedo: false,
+  additionalColor: Colors.white,
 );
 
 
@@ -57,7 +58,12 @@ class PaintCubit extends Cubit<PaintState> {
 
   /// Update the selected color
   void updateSelectedColor(Color color) {
-    safeEmit(_lastBuildState.copyWith(selectedColor: color));
+    safeEmit(_lastBuildState.copyWith(selectedColor: () => color));
+  }
+
+  /// Update the additional color
+  void updateAdditionalColor(Color color) {
+    safeEmit(_lastBuildState.copyWith(additionalColor: color, selectedColor: () => null));
   }
 
   /// Update the stroke size
@@ -158,7 +164,7 @@ class PaintCubit extends Cubit<PaintState> {
   void onPointerDown(Offset point) {
     final currentStroke = _startCurrentStroke(
       point,
-      color: _lastBuildState.selectedColor,
+      color: _lastBuildState.selectedColor ?? _lastBuildState.additionalColor,
       size: _lastBuildState.strokeSize,
       opacity: 1,
       type: _lastBuildState.drawingTool.strokeType,

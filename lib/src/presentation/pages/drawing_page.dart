@@ -3,13 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_paint/config/injectable/injectable.dart';
 import 'package:flutter_paint/core/common/presentation/logic/theme_provider.dart';
 import 'package:flutter_paint/core/common/presentation/widgets/app_nav_bar.dart';
-import 'package:flutter_paint/src/data/data_source/paint_local_data_source.dart';
-import 'package:flutter_paint/src/data/repositories/paint_repository_impl.dart';
-import 'package:flutter_paint/src/domain/entites/drawing_canvas_options.dart';
+import 'package:flutter_paint/src/domain/entities/drawing_canvas_options.dart';
 import 'package:flutter_paint/src/presentation/logic/paint_cubit.dart';
+import 'package:flutter_paint/src/presentation/pages/color_picker.dart';
 import 'package:flutter_paint/src/presentation/widgets/canvas_side_bar.dart';
 import 'package:flutter_paint/src/presentation/widgets/drawing_canvas.dart';
-import 'package:provider/provider.dart';
 
 class DrawingPage extends StatefulWidget {
   const DrawingPage({super.key});
@@ -59,7 +57,8 @@ class _DrawingPageState extends State<DrawingPage>
             }
 
             final options = DrawingCanvasOptions(
-              strokeColor: currentState.selectedColor,
+              strokeColor:
+                  currentState.selectedColor ?? currentState.additionalColor,
               size: currentState.strokeSize,
               opacity: 1.0,
               currentTool: currentState.drawingTool,
@@ -91,6 +90,7 @@ class _DrawingPageState extends State<DrawingPage>
                     child: CanvasSideBar(
                       canvasGlobalKey: canvasGlobalKey,
                       selectedColor: currentState.selectedColor,
+                      additionalColor: currentState.additionalColor,
                       selectedStrokeSize: currentState.strokeSize,
                       selectedDrawingTool: currentState.drawingTool,
                       isFilled: currentState.filled,
@@ -100,6 +100,17 @@ class _DrawingPageState extends State<DrawingPage>
                       canRedo: currentState.canRedo,
                       onFilledChanged: paintCubit.updateFilled,
                       onColorChanged: paintCubit.updateSelectedColor,
+                      onAdditionalColorChanged: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ColorPicker(initColor: currentState.additionalColor,),
+                          ),
+                        );
+                        if (result != null) {
+                          paintCubit.updateAdditionalColor(result);
+                        }
+                      },
                       onGridShowedChanged: paintCubit.updateShowGrid,
                       onStrokeSizeChanged: paintCubit.updateStrokeSize,
                       onPolygonSidesChanged: paintCubit.updatePolygonSides,

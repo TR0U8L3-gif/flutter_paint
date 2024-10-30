@@ -4,11 +4,16 @@ class ColorPalette extends StatelessWidget {
   const ColorPalette({
     super.key,
     required this.selectedColor,
+    required this.additionalColor,
     this.onColorChanged,
+    this.onAdditionalColorChanged,
   });
 
-  final Color selectedColor;
+  /// if selectedColor is null, additionalColor will be used
+  final Color? selectedColor;
+  final Color additionalColor;
   final void Function(Color selectedColor)? onColorChanged;
+  final void Function()? onAdditionalColorChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -51,6 +56,36 @@ class ColorPalette extends StatelessWidget {
                   ),
                 ),
               ),
+            Padding(
+              padding: const EdgeInsets.all(1),
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () => onAdditionalColorChanged?.call(),
+                  child: Container(
+                    height: 25,
+                    width: 50,
+                    decoration: BoxDecoration(
+                      color: additionalColor,
+                      border: Border.all(
+                        color: selectedColor == null
+                            ? theme.primary
+                            : Colors.transparent,
+                        width: 2.4,
+                      ),
+                      borderRadius: const BorderRadius.all(Radius.circular(5)),
+                    ),
+                    child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Icon(
+                          Icons.add_box_rounded,
+                          size: 22,
+                          color: theme.primary,
+                        )),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ],

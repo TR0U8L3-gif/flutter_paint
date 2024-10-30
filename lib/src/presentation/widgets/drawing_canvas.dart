@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_paint/core/extensions/drawing_tool_extensions.dart';
 import 'package:flutter_paint/core/extensions/offset_extensions.dart';
 import 'package:flutter_paint/core/common/domain/stroke.dart';
-import 'package:flutter_paint/src/domain/entites/drawing_canvas_options.dart';
+import 'package:flutter_paint/src/domain/entities/drawing_canvas_options.dart';
 
 class DrawingCanvas extends StatelessWidget {
   const DrawingCanvas({

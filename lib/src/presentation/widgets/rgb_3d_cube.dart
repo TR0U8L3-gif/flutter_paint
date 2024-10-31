@@ -43,122 +43,124 @@ class _RGB3DCubeState extends State<RGB3DCube> {
       ..rotateY(_ry)
       ..rotateZ(_rz);
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onPanUpdate: (details) {
-                print(details);
-                _rx += details.delta.dy * pi / 180;
-                _ry += details.delta.dx * pi / 180;
-                setState(() {
-                  _rx %= pi * 2;
-                  _ry %= pi * 2;
-                });
-              },
-              child: Transform(
-                transform: (Matrix4.identity()..setEntry(3, 2, _perspective)) *
-                    rotationMatrix,
-                alignment: FractionalOffset.center,
-                child: Cube(
-                  size: size,
-                  rotation: rotationMatrix,
-                  perspective: _perspective,
-                  front: CustomPaint(
-                    painter: PointsPainter(
-                      r: 255,
-                      g: 255,
-                      b: 0,
-                      static: RGBSide.r,
-                      rgbSideX: RGBSide.g,
+      body: Align(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onPanUpdate: (details) {
+                  print(details);
+                  _rx += details.delta.dy * pi / 180;
+                  _ry += details.delta.dx * pi / 180;
+                  setState(() {
+                    _rx %= pi * 2;
+                    _ry %= pi * 2;
+                  });
+                },
+                child: Transform(
+                  transform: (Matrix4.identity()..setEntry(3, 2, _perspective)) *
+                      rotationMatrix,
+                  alignment: FractionalOffset.center,
+                  child: Cube(
+                    size: size,
+                    rotation: rotationMatrix,
+                    perspective: _perspective,
+                    front: CustomPaint(
+                      painter: PointsPainter(
+                        r: 255,
+                        g: 255,
+                        b: 0,
+                        static: RGBSide.r,
+                        rgbSideX: RGBSide.g,
+                      ),
                     ),
-                  ),
-                  back: CustomPaint(
-                    painter: PointsPainter(
-                      r: 0,
-                      g: 255,
-                      b: 255,
-                      static: RGBSide.r,
-                      rgbSideX: RGBSide.g,
+                    back: CustomPaint(
+                      painter: PointsPainter(
+                        r: 0,
+                        g: 255,
+                        b: 255,
+                        static: RGBSide.r,
+                        rgbSideX: RGBSide.g,
+                      ),
                     ),
-                  ),
-                  left: CustomPaint(
-                    painter: PointsPainter(
-                      r: 0,
-                      g: 0,
-                      b: 0,
-                      static: RGBSide.g,
-                      rgbSideX: RGBSide.r,
+                    left: CustomPaint(
+                      painter: PointsPainter(
+                        r: 0,
+                        g: 0,
+                        b: 0,
+                        static: RGBSide.g,
+                        rgbSideX: RGBSide.r,
+                      ),
                     ),
-                  ),
-                  right: CustomPaint(
-                    painter: PointsPainter(
-                      r: 255,
-                      g: 255,
-                      b: 0,
-                      static: RGBSide.g,
-                      rgbSideX: RGBSide.r,
+                    right: CustomPaint(
+                      painter: PointsPainter(
+                        r: 255,
+                        g: 255,
+                        b: 0,
+                        static: RGBSide.g,
+                        rgbSideX: RGBSide.r,
+                      ),
                     ),
-                  ),
-                  top: CustomPaint(
-                    painter: PointsPainter(
-                      r: 255,
-                      g: 255,
-                      b: 255,
-                      static: RGBSide.b,
-                      rgbSideX: RGBSide.g,
+                    top: CustomPaint(
+                      painter: PointsPainter(
+                        r: 255,
+                        g: 255,
+                        b: 255,
+                        static: RGBSide.b,
+                        rgbSideX: RGBSide.g,
+                      ),
                     ),
-                  ),
-                  bottom: CustomPaint(
-                    painter: PointsPainter(
-                      r: 0,
-                      g: 255,
-                      b: 0,
-                      static: RGBSide.b,
-                      rgbSideX: RGBSide.g,
+                    bottom: CustomPaint(
+                      painter: PointsPainter(
+                        r: 0,
+                        g: 255,
+                        b: 0,
+                        static: RGBSide.b,
+                        rgbSideX: RGBSide.g,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 48),
-            Text('Rotate X: $_rx'),
-            Slider(
-              value: _rx,
-              min: 0,
-              max: pi * 2,
-              onChanged: (value) => setState(() {
-                _rx = value;
-              }),
-            ),
-            Text('Rotate Y: $_ry'),
-            Slider(
-              value: _ry,
-              min: 0,
-              max: pi * 2,
-              onChanged: (value) => setState(() {
-                _ry = value;
-              }),
-            ),
-            Text('Rotate Z: $_rz'),
-            Slider(
-              value: _rz,
-              min: 0,
-              max: pi * 2,
-              onChanged: (value) => setState(() {
-                _rz = value;
-              }),
-            ),
-            // Text('Perspective: $_perspective'),
-            // Slider(
-            //   value: _perspective,
-            //   min: 0,
-            //   max: 0.005,
-            //   onChanged: (value) => setState(() => _perspective = value),
-            // ),
-          ],
+              const SizedBox(height: 48),
+              Text('Rotate X: $_rx'),
+              Slider(
+                value: _rx,
+                min: 0,
+                max: pi * 2,
+                onChanged: (value) => setState(() {
+                  _rx = value;
+                }),
+              ),
+              Text('Rotate Y: $_ry'),
+              Slider(
+                value: _ry,
+                min: 0,
+                max: pi * 2,
+                onChanged: (value) => setState(() {
+                  _ry = value;
+                }),
+              ),
+              Text('Rotate Z: $_rz'),
+              Slider(
+                value: _rz,
+                min: 0,
+                max: pi * 2,
+                onChanged: (value) => setState(() {
+                  _rz = value;
+                }),
+              ),
+              // Text('Perspective: $_perspective'),
+              // Slider(
+              //   value: _perspective,
+              //   min: 0,
+              //   max: 0.005,
+              //   onChanged: (value) => setState(() => _perspective = value),
+              // ),
+            ],
+          ),
         ),
       ),
     );

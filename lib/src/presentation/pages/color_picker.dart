@@ -277,13 +277,50 @@ class _BuildSlider extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label),
-        Slider(
-          value: value,
-          min: 0,
-          max: max,
-          divisions: max ~/ step,
-          onChanged: onChanged,
+        Row(
+          children: [
+            Expanded(
+              child: Slider(
+                value: value,
+                min: 0,
+                max: max,
+                divisions: max ~/ step,
+                onChanged: onChanged,
+              ),
+            ),
+            SizedBox(
+              width: 60,
+              child: TextField(
+                controller: TextEditingController(text: value.toPrecision(2).toString()),
+                keyboardType: TextInputType.number,
+                onSubmitted: (value) {
+                  double newValue;
+                  try {
+                   newValue = double.parse(value);
+                  } catch (e) {
+                    return;
+                  }
+                  if (newValue >= 0 && newValue <= max) {
+                    onChanged(newValue);
+                    return;
+                  } 
+
+                  if (newValue < 0) {
+                    onChanged(0);
+                    return;
+                  }
+
+                  if (newValue > max) {
+                    onChanged(max);
+                    return;
+                  }
+                },
+                style: Theme.of(context).textTheme.labelSmall,
+              ),
+            ),
+          ],
         ),
+        
       ],
     );
   }

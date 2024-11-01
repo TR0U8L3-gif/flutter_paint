@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' hide Image;
 import 'package:flutter/rendering.dart';
+import 'package:flutter_paint/core/common/domain/image_file.dart';
 import 'package:flutter_paint/core/utils/enums/drawing_tool.dart';
 import 'package:flutter_paint/src/presentation/widgets/color_palette.dart';
 import 'package:flutter_paint/src/presentation/widgets/icon_box.dart';
@@ -29,6 +30,8 @@ class CanvasSideBar extends StatelessWidget {
     required this.onRedo,
     required this.onClear,
     required this.saveFile,
+    required this.onExport,
+    required this.onImport,
   });
 
   final GlobalKey canvasGlobalKey;
@@ -53,6 +56,13 @@ class CanvasSideBar extends StatelessWidget {
   final void Function() onUndo;
   final void Function() onRedo;
   final void Function() onClear;
+  final void Function(
+    RenderRepaintBoundary? boundary,
+    ImageFile file,
+  ) onExport;
+  final void Function(
+    ImageFile file,
+  ) onImport;
   final void Function(
     RenderRepaintBoundary? boundary,
     String fileExtension,
@@ -278,6 +288,70 @@ class CanvasSideBar extends StatelessWidget {
                   ),
                 ],
               ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Flexible(
+                    child: TextButton(
+                      child: const Text('PBM '),
+                      onPressed: () => onExport(
+                          canvasGlobalKey.currentContext?.findRenderObject()
+                              as RenderRepaintBoundary?,
+                          PBMFile()),
+                    ),
+                  ),
+                  Flexible(
+                    child: TextButton(
+                      child: const Text('PGM'),
+                      onPressed: () => onExport(
+                          canvasGlobalKey.currentContext?.findRenderObject()
+                              as RenderRepaintBoundary?,
+                          PGMFile()),
+                    ),
+                  ),
+                  Flexible(
+                    child: TextButton(
+                      child: const Text('PPM '),
+                      onPressed: () => onExport(
+                          canvasGlobalKey.currentContext?.findRenderObject()
+                              as RenderRepaintBoundary?,
+                          PPMFile()),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Import',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Divider(
+                color: theme.onPrimaryContainer,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Flexible(
+                    child: TextButton(
+                      child: const Text('PBM'),
+                      onPressed: () => onImport(PBMFile()),
+                    ),
+                  ),
+                  Flexible(
+                    child: TextButton(
+                      child: const Text('PGM '),
+                      onPressed: () => onImport(PGMFile()),
+                    ),
+                  ),
+                  Flexible(
+                    child: TextButton(
+                      child: const Text('PPM  '),
+                      onPressed: () => onImport(PPMFile()),
+                    ),
+                  ),
+                ],
+              ),
+
               const SizedBox(height: 20),
             ],
           ),

@@ -1,4 +1,5 @@
 import 'package:flutter/rendering.dart';
+import 'package:flutter_paint/core/common/domain/image_file.dart';
 import 'package:flutter_paint/core/utils/response.dart';
 import 'package:flutter_paint/src/data/data_source/paint_local_data_source.dart';
 import 'package:flutter_paint/src/domain/repositories/paint_repository.dart';
@@ -20,6 +21,29 @@ class PaintRepositoryImpl implements PaintRepository {
       return right(result);
     } catch (e) {
       return left(Failure(message: 'Error saving file: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, String>> exportFile(RenderRepaintBoundary boundary, ImageFile imageFile) async {
+    try {
+      await imageFile.fromBoundaries(boundary);
+      final result = await _localDataSource.saveFileTXT(imageFile.toDataString());
+      return right(result);
+    } catch (e) {
+      return left(Failure(message: 'Error exporting file: $e'));
+    }
+    
+  }
+
+  @override
+  Future<Either<Failure, ImageFile>> importFile(String path, ImageFile imageFile) async {
+    try {
+      final data = await _localDataSource.readFileTXT(path);
+      imageFile.fromDataString(data);
+      return right(imageFile);
+    } catch (e) {
+      return left(Failure(message: 'Error importing file: $e'));
     }
   }
   

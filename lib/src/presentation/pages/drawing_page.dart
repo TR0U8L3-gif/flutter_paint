@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_paint/config/injectable/injectable.dart';
@@ -104,7 +105,9 @@ class _DrawingPageState extends State<DrawingPage>
                         final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => ColorPicker(initColor: currentState.additionalColor,),
+                            builder: (context) => ColorPicker(
+                              initColor: currentState.additionalColor,
+                            ),
                           ),
                         );
                         if (result != null) {
@@ -119,6 +122,17 @@ class _DrawingPageState extends State<DrawingPage>
                       onRedo: paintCubit.redo,
                       onClear: paintCubit.clear,
                       saveFile: paintCubit.saveFile,
+                      onExport: (boundary, file) => paintCubit.onExportFile(
+                        boundary: boundary,
+                        imageFile: file,
+                      ),
+                      onImport: (file) async {
+                        final result = await FilePicker.platform.pickFiles(type: FileType.any);
+                        paintCubit.onImportFile(
+                          path: result?.files.single.path,
+                          imageFile: file,
+                        );
+                      },
                     ),
                   ),
                 ),

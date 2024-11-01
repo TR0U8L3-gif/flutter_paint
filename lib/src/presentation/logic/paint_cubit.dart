@@ -1,13 +1,19 @@
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_paint/core/common/domain/image_file.dart';
 import 'package:flutter_paint/core/common/domain/stroke.dart';
 import 'package:flutter_paint/core/common/domain/undo_redo.dart';
 import 'package:flutter_paint/core/extensions/drawing_tool_extensions.dart';
 import 'package:flutter_paint/core/utils/enums/drawing_tool.dart';
 import 'package:flutter_paint/core/utils/enums/stroke_type.dart';
+import 'package:flutter_paint/src/domain/usecases/export_file_use_case.dart';
+import 'package:flutter_paint/src/domain/usecases/import_file_use_case.dart';
 import 'package:flutter_paint/src/domain/usecases/save_file_use_case.dart';
+import 'package:flutter_paint/src/presentation/logic/save_load_data.dart';
 import 'package:injectable/injectable.dart';
 
 part 'paint_state.dart';
@@ -26,15 +32,32 @@ const _initialState = PaintIdle(
   additionalColor: Colors.white,
 );
 
-
 @injectable
 class PaintCubit extends Cubit<PaintState> {
   PaintCubit({
     required SaveFileUseCase saveFileUseCase,
+    required ExportFileUseCase exportFileUseCase,
+    required ImportFileUseCase importFileUseCase,
   })  : _saveFileUseCase = saveFileUseCase,
+        _exportFileUseCase = exportFileUseCase,
+        _importFileUseCase = importFileUseCase,
         super(_initialState) {
     _initializeCubit();
   }
+
+  final SaveFileUseCase _saveFileUseCase;
+
+  final ExportFileUseCase _exportFileUseCase;
+
+  final ImportFileUseCase _importFileUseCase;
+
+  PaintIdle _lastBuildState = _initialState;
+
+  final memento = UndoRedo<Stroke>();
+
+  final queue = StreamController<SaveLoadData>.broadcast();
+
+  get buildState => _lastBuildState;
 
   void _initializeCubit() {
     stream.listen((state) {
@@ -42,15 +65,14 @@ class PaintCubit extends Cubit<PaintState> {
         _updateLastBuildState(state);
       }
     });
+    queue.stream.listen((event) {
+      if (event is LoadFileData) {
+        _loadFile(event);
+      } else if (event is SaveFileData) {
+        _saveFile(event);
+      }
+    });
   }
-
-  final SaveFileUseCase _saveFileUseCase;
-
-  PaintIdle _lastBuildState = _initialState;
-
-  final memento = UndoRedo<Stroke>();
-
-  get buildState => _lastBuildState;
 
   void _updateLastBuildState(PaintIdle state) {
     _lastBuildState = state;
@@ -63,7 +85,8 @@ class PaintCubit extends Cubit<PaintState> {
 
   /// Update the additional color
   void updateAdditionalColor(Color color) {
-    safeEmit(_lastBuildState.copyWith(additionalColor: color, selectedColor: () => null));
+    safeEmit(_lastBuildState.copyWith(
+        additionalColor: color, selectedColor: () => null));
   }
 
   /// Update the stroke size
@@ -293,7 +316,8 @@ class PaintCubit extends Cubit<PaintState> {
     ))
         .then((result) {
       result.fold(
-        (failure) => emit(PaintMessage(failure.message ?? 'Unknown error saving file')),
+        (failure) =>
+            emit(PaintMessage(failure.message ?? 'Unknown error saving file')),
         (success) {
           if (success != null) {
             emit(PaintMessage(success));
@@ -301,5 +325,120 @@ class PaintCubit extends Cubit<PaintState> {
         },
       );
     });
+  }
+
+  void onExportFile(
+      {required RenderRepaintBoundary? boundary,
+      required ImageFile imageFile}) {
+    if (boundary == null) {
+      emit(const PaintMessage('Error exporting file: boundary is null'));
+      return;
+    }
+    queue.add(SaveFileData(imageFile, boundary));
+  }
+
+  void onImportFile({required String? path, required ImageFile imageFile}) {
+    if (path == null || path.isEmpty) {
+      emit(const PaintMessage('Error importing file: path is empty'));
+      return;
+    }
+    queue.add(LoadFileData(imageFile, path));
+  }
+
+  void _loadFile(LoadFileData event) {
+    _importFileUseCase
+        .call(ImportFileUseCaseParams(
+      imageFile: event.imageFile,
+      path: event.path,
+    ))
+        .then((result) {
+      result.fold(
+        (failure) =>
+            emit(PaintMessage(failure.message ?? 'Unknown error loading file')),
+        (success) {
+          final stroke = convertPixelsToStrokes(success.pixels);
+
+          final result = memento.add(stroke);
+
+          result.fold(
+            (failure) => emit(PaintMessage(failure)),
+            (success) {
+              if (success != null) {
+                emit(PaintMessage(success));
+              }
+            },
+          );
+
+          safeEmit(
+            _lastBuildState.copyWith(
+              strokes: memento.undoStack,
+              currentStroke: () => null,
+              canUndo: memento.canUndo,
+              canRedo: memento.canRedo,
+            ),
+          );
+        },
+      );
+    });
+  }
+
+  void _saveFile(SaveFileData event) {
+    _exportFileUseCase
+        .call(ExportFileUseCaseParams(
+      boundary: event.boundary,
+      imageFile: event.imageFile,
+    ))
+        .then((result) {
+      result.fold(
+        (failure) =>
+            emit(PaintMessage(failure.message ?? 'Unknown error saving file')),
+        (success) => emit(PaintMessage(success)),
+      );
+    });
+  }
+
+  // TODO: nie diziała wszytsko opróc grey scale ale i tak źle
+  // dodatkowo trzeba umieć przesakaloać obrazek na canvas i wyśrodkować
+  // dodatkowo ogarnąć te rozszerzenia o co z nimi chodzi
+  Stroke convertPixelsToStrokes(List<List<int>> pixels) {
+    List<Offset> allPoints = [];
+
+    // Example dimensions; you may need to adjust based on image size and interpretation
+    int width = pixels.length;
+    int height = pixels[0].length;
+
+    // A simple interpretation could be to treat each row or column as a distinct stroke,
+    // or to detect connected regions of the same color.
+
+    for (int x = 0; x < width; x++) {
+      List<Offset> points = [];
+
+      for (int y = 0; y < height; y++) {
+        int pixel = pixels[x][y];
+
+        if (pixel != 0) {
+          // Assuming 0 is a transparent/empty pixel
+          Offset point = Offset(y.toDouble(), x.toDouble());
+          points.add(point);
+        }
+      }
+
+      if (points.isNotEmpty) {
+        allPoints.addAll(points);
+      }
+    }
+
+    return NormalStroke(
+      points: allPoints,
+      color: Colors.black, // Fallback color
+      size: 1.0,
+      opacity: 1.0,
+    );
+  }
+
+  @override
+  Future<void> close() {
+    queue.close();
+    return super.close();
   }
 }

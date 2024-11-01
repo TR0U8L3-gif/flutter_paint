@@ -9,15 +9,20 @@ import 'package:path_provider/path_provider.dart';
 abstract class PaintLocalDataSource {
   const PaintLocalDataSource();
   Future<String> saveFile(RenderRepaintBoundary boundary, String extension);
+
+  Future<String> saveFileTXT(String data);
+
+  Future<String> readFileTXT(String path);
 }
 
 @Singleton(as: PaintLocalDataSource)
 class PaintLocalDataSourceImpl implements PaintLocalDataSource {
   @override
-  Future<String> saveFile(RenderRepaintBoundary boundary, String extension) async {
+  Future<String> saveFile(
+      RenderRepaintBoundary boundary, String extension) async {
     try {
       final bytes = await _getBytesFromBoundary(boundary);
-      
+
       if (bytes == null) {
         throw Exception('Could not get bytes from boundary');
       }
@@ -59,5 +64,54 @@ class PaintLocalDataSourceImpl implements PaintLocalDataSource {
     ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
     Uint8List? pngBytes = byteData?.buffer.asUint8List();
     return pngBytes;
+  }
+
+  @override
+  Future<String> saveFileTXT(String data) async {
+    try {
+      String directoryPath;
+
+      if (Platform.isAndroid || Platform.isIOS) {
+        // Get the external storage directory for Android and iOS
+        final directory = await getExternalStorageDirectory();
+        if (directory == null) {
+          throw Exception('Could not access external storage.');
+        }
+        directoryPath = directory.path;
+      } else if (Platform.isWindows) {
+        // Get the Documents directory for Windows
+        final directory = await getApplicationDocumentsDirectory();
+        directoryPath = directory.path;
+      } else {
+        throw Exception('Unsupported platform');
+      }
+
+      // Define the file name with a unique timestamp
+      final String fileName =
+          'file_${DateTime.now().millisecondsSinceEpoch}.txt';
+      final String filePath = '$directoryPath/$fileName';
+
+      // Create the file and write the bytes to it
+      final File file = File(filePath);
+      await file.writeAsString(data);
+      return 'File saved at: $filePath';
+    } catch (e) {
+      throw Exception('Error saving file: $e');
+    }
+  }
+
+  @override
+  Future<String> readFileTXT(String path) async {
+    try {
+      final File file = File(path);
+      if (await file.exists()) {
+        final String contents = await file.readAsString();
+        return contents;
+      } else {
+        throw Exception('File not found at: $path');
+      }
+    } catch (e) {
+      throw Exception('Error reading file at $path: $e');
+    }
   }
 }

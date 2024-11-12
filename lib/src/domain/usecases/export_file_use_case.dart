@@ -15,7 +15,7 @@ class ExportFileUseCase
 
   @override
   ResultFuture<Failure, String> call(ExportFileUseCaseParams params) {
-    return _repository.exportFile(params.boundary, params.imageFile);
+    return _repository.exportFile(params.boundary, params.imageFile, params.isFile);
   }
 }
 
@@ -23,7 +23,9 @@ class ExportFileUseCaseParams {
   ExportFileUseCaseParams({
     required this.boundary,
     required this.imageFile,
+    required this.isFile,
   });
   final RenderRepaintBoundary boundary;
   final ImageFile imageFile;
+  final bool isFile;
 }

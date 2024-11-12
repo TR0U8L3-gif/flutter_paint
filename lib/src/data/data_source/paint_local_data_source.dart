@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/rendering.dart';
+import 'package:flutter_paint/core/common/domain/image_file.dart';
 import 'package:injectable/injectable.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -10,9 +11,13 @@ abstract class PaintLocalDataSource {
   const PaintLocalDataSource();
   Future<String> saveFile(RenderRepaintBoundary boundary, String extension);
 
-  Future<String> saveFileTXT(String data);
+  Future<String> saveFileTXT(ImageFile image);
 
   Future<String> readFileTXT(String path);
+
+  Future<String> saveFileFILE(ImageFile image);
+  
+  Future<File> readFileFILE(String path);
 }
 
 @Singleton(as: PaintLocalDataSource)
@@ -67,7 +72,7 @@ class PaintLocalDataSourceImpl implements PaintLocalDataSource {
   }
 
   @override
-  Future<String> saveFileTXT(String data) async {
+  Future<String> saveFileTXT(ImageFile image) async {
     try {
       String directoryPath;
 
@@ -88,12 +93,10 @@ class PaintLocalDataSourceImpl implements PaintLocalDataSource {
 
       // Define the file name with a unique timestamp
       final String fileName =
-          'file_${DateTime.now().millisecondsSinceEpoch}.txt';
+          'file_${DateTime.now().millisecondsSinceEpoch}_${image.extension}.txt';
       final String filePath = '$directoryPath/$fileName';
 
-      // Create the file and write the bytes to it
-      final File file = File(filePath);
-      await file.writeAsString(data);
+      await image.exportAsText(filePath);
       return 'File saved at: $filePath';
     } catch (e) {
       throw Exception('Error saving file: $e');
@@ -102,6 +105,7 @@ class PaintLocalDataSourceImpl implements PaintLocalDataSource {
 
   @override
   Future<String> readFileTXT(String path) async {
+    throw UnimplementedError();
     try {
       final File file = File(path);
       if (await file.exists()) {
@@ -112,6 +116,53 @@ class PaintLocalDataSourceImpl implements PaintLocalDataSource {
       }
     } catch (e) {
       throw Exception('Error reading file at $path: $e');
+    }
+  }
+  
+  @override
+  Future<File> readFileFILE(String path) async {
+    throw UnimplementedError();
+     try {
+      final File file = File(path);
+      if (await file.exists()) {
+        return file;
+      } else {
+        throw Exception('File not found at: $path');
+      }
+    } catch (e) {
+      throw Exception('Error reading file at $path: $e');
+    }
+  }
+  
+  @override
+  Future<String> saveFileFILE(ImageFile image) async {
+    try {
+      String directoryPath;
+
+      if (Platform.isAndroid || Platform.isIOS) {
+        // Get the external storage directory for Android and iOS
+        final directory = await getExternalStorageDirectory();
+        if (directory == null) {
+          throw Exception('Could not access external storage.');
+        }
+        directoryPath = directory.path;
+      } else if (Platform.isWindows) {
+        // Get the Documents directory for Windows
+        final directory = await getApplicationDocumentsDirectory();
+        directoryPath = directory.path;
+      } else {
+        throw Exception('Unsupported platform');
+      }
+
+      // Define the file name with a unique timestamp
+      final String fileName =
+          'file_${DateTime.now().millisecondsSinceEpoch}.${image.extension}';
+      final String filePath = '$directoryPath/$fileName';
+
+      await image.exportAsBinary(filePath);
+      return 'File saved at: $filePath';
+    } catch (e) {
+      throw Exception('Error saving file: $e');
     }
   }
 }

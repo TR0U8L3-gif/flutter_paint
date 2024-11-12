@@ -25,11 +25,16 @@ class PaintRepositoryImpl implements PaintRepository {
   }
 
   @override
-  Future<Either<Failure, String>> exportFile(RenderRepaintBoundary boundary, ImageFile imageFile) async {
+  Future<Either<Failure, String>> exportFile(RenderRepaintBoundary boundary, ImageFile imageFile, bool isFile) async {
     try {
       await imageFile.fromBoundaries(boundary);
-      final result = await _localDataSource.saveFileTXT(imageFile.toDataString());
-      return right(result);
+      if (isFile) {
+        final result = await _localDataSource.saveFileTXT(imageFile);
+        return right(result);
+      } else {
+        final result = await _localDataSource.saveFileFILE(imageFile);
+        return right(result);
+      }
     } catch (e) {
       return left(Failure(message: 'Error exporting file: $e'));
     }
@@ -38,9 +43,10 @@ class PaintRepositoryImpl implements PaintRepository {
 
   @override
   Future<Either<Failure, ImageFile>> importFile(String path, ImageFile imageFile) async {
+    throw UnimplementedError();
     try {
       final data = await _localDataSource.readFileTXT(path);
-      imageFile.fromDataString(data);
+      // imageFile.fromDataString(data);
       return right(imageFile);
     } catch (e) {
       return left(Failure(message: 'Error importing file: $e'));

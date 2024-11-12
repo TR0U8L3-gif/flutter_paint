@@ -327,14 +327,16 @@ class PaintCubit extends Cubit<PaintState> {
     });
   }
 
-  void onExportFile(
-      {required RenderRepaintBoundary? boundary,
-      required ImageFile imageFile}) {
+  void onExportFile({
+    required RenderRepaintBoundary? boundary,
+    required ImageFile imageFile,
+    required bool isFile,
+  }) {
     if (boundary == null) {
       emit(const PaintMessage('Error exporting file: boundary is null'));
       return;
     }
-    queue.add(SaveFileData(imageFile, boundary));
+    queue.add(SaveFileData(imageFile, boundary, isFile));
   }
 
   void onImportFile({required String? path, required ImageFile imageFile}) {
@@ -346,6 +348,7 @@ class PaintCubit extends Cubit<PaintState> {
   }
 
   void _loadFile(LoadFileData event) {
+    throw UnimplementedError();
     _importFileUseCase
         .call(ImportFileUseCaseParams(
       imageFile: event.imageFile,
@@ -356,18 +359,18 @@ class PaintCubit extends Cubit<PaintState> {
         (failure) =>
             emit(PaintMessage(failure.message ?? 'Unknown error loading file')),
         (success) {
-          final stroke = convertPixelsToStrokes(success.pixels);
+          // final stroke = convertPixelsToStrokes(success.pixels);
 
-          final result = memento.add(stroke);
+          // final result = memento.add(stroke);
 
-          result.fold(
-            (failure) => emit(PaintMessage(failure)),
-            (success) {
-              if (success != null) {
-                emit(PaintMessage(success));
-              }
-            },
-          );
+          // result.fold(
+          //   (failure) => emit(PaintMessage(failure)),
+          //   (success) {
+          //     if (success != null) {
+          //       emit(PaintMessage(success));
+          //     }
+          //   },
+          // );
 
           safeEmit(
             _lastBuildState.copyWith(
@@ -387,6 +390,7 @@ class PaintCubit extends Cubit<PaintState> {
         .call(ExportFileUseCaseParams(
       boundary: event.boundary,
       imageFile: event.imageFile,
+      isFile: event.isFile,
     ))
         .then((result) {
       result.fold(
@@ -395,45 +399,6 @@ class PaintCubit extends Cubit<PaintState> {
         (success) => emit(PaintMessage(success)),
       );
     });
-  }
-
-  // TODO: nie diziała wszytsko opróc grey scale ale i tak źle
-  // dodatkowo trzeba umieć przesakaloać obrazek na canvas i wyśrodkować
-  // dodatkowo ogarnąć te rozszerzenia o co z nimi chodzi
-  Stroke convertPixelsToStrokes(List<List<int>> pixels) {
-    List<Offset> allPoints = [];
-
-    // Example dimensions; you may need to adjust based on image size and interpretation
-    int width = pixels.length;
-    int height = pixels[0].length;
-
-    // A simple interpretation could be to treat each row or column as a distinct stroke,
-    // or to detect connected regions of the same color.
-
-    for (int x = 0; x < width; x++) {
-      List<Offset> points = [];
-
-      for (int y = 0; y < height; y++) {
-        int pixel = pixels[x][y];
-
-        if (pixel != 0) {
-          // Assuming 0 is a transparent/empty pixel
-          Offset point = Offset(y.toDouble(), x.toDouble());
-          points.add(point);
-        }
-      }
-
-      if (points.isNotEmpty) {
-        allPoints.addAll(points);
-      }
-    }
-
-    return NormalStroke(
-      points: allPoints,
-      color: Colors.black, // Fallback color
-      size: 1.0,
-      opacity: 1.0,
-    );
   }
 
   @override

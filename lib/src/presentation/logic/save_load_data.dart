@@ -15,9 +15,10 @@ class LoadFileData implements SaveLoadData {
 }
 
 class SaveFileData implements SaveLoadData {
-  const SaveFileData(this.imageFile, this.boundary);
+  const SaveFileData(this.imageFile, this.boundary, this.isFile);
 
   @override
   final ImageFile imageFile;
   final RenderRepaintBoundary boundary;
+  final bool isFile;
 }

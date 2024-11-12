@@ -122,9 +122,10 @@ class _DrawingPageState extends State<DrawingPage>
                       onRedo: paintCubit.redo,
                       onClear: paintCubit.clear,
                       saveFile: paintCubit.saveFile,
-                      onExport: (boundary, file) => paintCubit.onExportFile(
+                      onExport: (boundary, file, isFile) => paintCubit.onExportFile(
                         boundary: boundary,
                         imageFile: file,
+                        isFile: isFile,
                       ),
                       onImport: (file) async {
                         final result = await FilePicker.platform.pickFiles(type: FileType.any);

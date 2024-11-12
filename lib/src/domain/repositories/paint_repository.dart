@@ -8,5 +8,5 @@ abstract class PaintRepository {
 
   Future<Either<Failure, String>> exportFile(RenderRepaintBoundary boundary, ImageFile imageFile, bool isFile);
 
-  Future<Either<Failure, ImageFile>> importFile(String path, ImageFile imageFile);
+  Future<Either<Failure, ImageFile>> importFile(String path, ImageFile imageFile, bool isFile);
 }

@@ -7,11 +7,12 @@ abstract class SaveLoadData {
 }
 
 class LoadFileData implements SaveLoadData {
-  const LoadFileData(this.imageFile, this.path);
+  const LoadFileData(this.imageFile, this.path, this.isFile);
 
   @override
   final ImageFile imageFile;
   final String path;
+  final bool isFile;
 }
 
 class SaveFileData implements SaveLoadData {

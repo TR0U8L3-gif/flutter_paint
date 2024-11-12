@@ -63,6 +63,7 @@ class CanvasSideBar extends StatelessWidget {
   ) onExport;
   final void Function(
     ImageFile file,
+    bool isFile,
   ) onImport;
   final void Function(
     RenderRepaintBoundary? boundary,
@@ -300,7 +301,7 @@ class CanvasSideBar extends StatelessWidget {
                           canvasGlobalKey.currentContext?.findRenderObject()
                               as RenderRepaintBoundary?,
                           PBMFile(),
-                          true),
+                          false),
                     ),
                   ),
                   Flexible(
@@ -310,7 +311,7 @@ class CanvasSideBar extends StatelessWidget {
                           canvasGlobalKey.currentContext?.findRenderObject()
                               as RenderRepaintBoundary?,
                           PGMFile(),
-                          true),
+                          false),
                     ),
                   ),
                   Flexible(
@@ -320,7 +321,7 @@ class CanvasSideBar extends StatelessWidget {
                           canvasGlobalKey.currentContext?.findRenderObject()
                               as RenderRepaintBoundary?,
                           PPMFile(),
-                          true),
+                          false),
                     ),
                   ),
                 ],
@@ -336,7 +337,7 @@ class CanvasSideBar extends StatelessWidget {
                           canvasGlobalKey.currentContext?.findRenderObject()
                               as RenderRepaintBoundary?,
                           PBMFile(),
-                          false),
+                          true),
                     ),
                   ),
                   Flexible(
@@ -346,7 +347,7 @@ class CanvasSideBar extends StatelessWidget {
                           canvasGlobalKey.currentContext?.findRenderObject()
                               as RenderRepaintBoundary?,
                           PGMFile(),
-                          false),
+                          true),
                     ),
                   ),
                   Flexible(
@@ -356,7 +357,7 @@ class CanvasSideBar extends StatelessWidget {
                           canvasGlobalKey.currentContext?.findRenderObject()
                               as RenderRepaintBoundary?,
                           PPMFile(),
-                          false),
+                          true),
                     ),
                   ),
                 ],
@@ -372,22 +373,47 @@ class CanvasSideBar extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
+                  const Text('   Text:'),
                   Flexible(
                     child: TextButton(
                       child: const Text('PBM'),
-                      onPressed: () => onImport(PBMFile()),
+                      onPressed: () => onImport(PBMFile(), false),
                     ),
                   ),
                   Flexible(
                     child: TextButton(
                       child: const Text('PGM '),
-                      onPressed: () => onImport(PGMFile()),
+                      onPressed: () => onImport(PGMFile(), false),
                     ),
                   ),
                   Flexible(
                     child: TextButton(
                       child: const Text('PPM  '),
-                      onPressed: () => onImport(PPMFile()),
+                      onPressed: () => onImport(PPMFile(), false),
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  const Text('Binary:'),
+                  Flexible(
+                    child: TextButton(
+                      child: const Text('PBM'),
+                      onPressed: () => onImport(PBMFile(), true),
+                    ),
+                  ),
+                  Flexible(
+                    child: TextButton(
+                      child: const Text('PGM '),
+                      onPressed: () => onImport(PGMFile(), true),
+                    ),
+                  ),
+                  Flexible(
+                    child: TextButton(
+                      child: const Text('PPM  '),
+                      onPressed: () => onImport(PPMFile(), true),
                     ),
                   ),
                 ],

@@ -12,14 +12,15 @@ class ImportFileUseCase extends UseCase<ImageFile,ImportFileUseCaseParams> {
 
   @override
   ResultFuture<Failure, ImageFile> call(ImportFileUseCaseParams params) {
-    return _repository.importFile(params.path, params.imageFile);
+    return _repository.importFile(params.path, params.imageFile, params.isFile);
   }
   
 }
 
 class ImportFileUseCaseParams {
-  ImportFileUseCaseParams({required this.imageFile, required this.path});
+  ImportFileUseCaseParams({required this.imageFile, required this.path, required this.isFile});
   
   final ImageFile imageFile;
   final String path;
+  final bool isFile;
 }

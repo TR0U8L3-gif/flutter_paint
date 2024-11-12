@@ -339,42 +339,32 @@ class PaintCubit extends Cubit<PaintState> {
     queue.add(SaveFileData(imageFile, boundary, isFile));
   }
 
-  void onImportFile({required String? path, required ImageFile imageFile}) {
+  void onImportFile({required String? path, required ImageFile imageFile, required bool isFile}) {
     if (path == null || path.isEmpty) {
       emit(const PaintMessage('Error importing file: path is empty'));
       return;
     }
-    queue.add(LoadFileData(imageFile, path));
+    queue.add(LoadFileData(imageFile, path, isFile));
   }
 
   void _loadFile(LoadFileData event) {
-    throw UnimplementedError();
     _importFileUseCase
         .call(ImportFileUseCaseParams(
       imageFile: event.imageFile,
       path: event.path,
+      isFile: event.isFile,
     ))
         .then((result) {
       result.fold(
         (failure) =>
             emit(PaintMessage(failure.message ?? 'Unknown error loading file')),
-        (success) {
-          // final stroke = convertPixelsToStrokes(success.pixels);
-
-          // final result = memento.add(stroke);
-
-          // result.fold(
-          //   (failure) => emit(PaintMessage(failure)),
-          //   (success) {
-          //     if (success != null) {
-          //       emit(PaintMessage(success));
-          //     }
-          //   },
-          // );
-
+        (image) {
+          final stroke = BitMapStroke(pixels: image.pixels);
+          
+          memento.add(stroke);
           safeEmit(
             _lastBuildState.copyWith(
-              strokes: memento.undoStack,
+              strokes: List.from(memento.undoStack),
               currentStroke: () => null,
               canUndo: memento.canUndo,
               canRedo: memento.canRedo,

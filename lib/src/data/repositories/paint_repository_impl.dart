@@ -29,10 +29,10 @@ class PaintRepositoryImpl implements PaintRepository {
     try {
       await imageFile.fromBoundaries(boundary);
       if (isFile) {
-        final result = await _localDataSource.saveFileTXT(imageFile);
+        final result = await _localDataSource.saveFileFILE(imageFile);
         return right(result);
       } else {
-        final result = await _localDataSource.saveFileFILE(imageFile);
+        final result = await _localDataSource.saveFileTXT(imageFile);
         return right(result);
       }
     } catch (e) {
@@ -42,11 +42,15 @@ class PaintRepositoryImpl implements PaintRepository {
   }
 
   @override
-  Future<Either<Failure, ImageFile>> importFile(String path, ImageFile imageFile) async {
-    throw UnimplementedError();
+  Future<Either<Failure, ImageFile>> importFile(String path, ImageFile imageFile, bool isFile) async {
     try {
-      final data = await _localDataSource.readFileTXT(path);
-      // imageFile.fromDataString(data);
+      if(isFile) {
+        // final data = await _localDataSource.readFileFILE(path);
+        await imageFile.importAsBinary(path);
+      } else {
+        // final data = await _localDataSource.readFileTXT(path);
+        await imageFile.importAsText(path);
+      }
       return right(imageFile);
     } catch (e) {
       return left(Failure(message: 'Error importing file: $e'));

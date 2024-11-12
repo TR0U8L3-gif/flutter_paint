@@ -127,11 +127,12 @@ class _DrawingPageState extends State<DrawingPage>
                         imageFile: file,
                         isFile: isFile,
                       ),
-                      onImport: (file) async {
+                      onImport: (file, isFile) async {
                         final result = await FilePicker.platform.pickFiles(type: FileType.any);
                         paintCubit.onImportFile(
                           path: result?.files.single.path,
                           imageFile: file,
+                          isFile: isFile,
                         );
                       },
                     ),

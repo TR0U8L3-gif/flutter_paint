@@ -82,6 +82,20 @@ abstract class Stroke {
           size: size,
           opacity: opacity,
         );
+      case StrokeType.bitmap:
+        return BitMapStroke(
+          points: points,
+          pixels: (json['pixels'] as List<dynamic>)
+              .map(
+                (row) => (row as List<dynamic>)
+                    .map((color) => Color(color as int))
+                    .toList(),
+              )
+              .toList(),
+          color: color,
+          size: size,
+          opacity: opacity,
+        );
     }
   }
 
@@ -318,4 +332,40 @@ class SquareStroke extends Stroke {
       'strokeType': strokeType.toString(),
     };
   }
+}
+
+class BitMapStroke extends Stroke {
+  final List<List<Color>> pixels;
+
+  BitMapStroke({
+    super.points = const [],
+    required this.pixels,
+    super.color,
+    super.size,
+    super.opacity,
+  }) : super(strokeType: StrokeType.bitmap);
+  
+  @override
+  Stroke copyWith({List<Offset>? points, Color? color, double? size, double? opacity, List<List<Color>>? pixels}) {
+    return BitMapStroke(
+      points: points ?? this.points,
+      pixels: pixels ?? this.pixels,
+      color: color ?? this.color,
+      size: size ?? this.size,
+      opacity: opacity ?? this.opacity,
+    );
+  }
+  
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'points': points.map((point) => [point.dx, point.dy]).toList(),
+      'pixels': pixels.map((row) => row.map((color) => color.value).toList()).toList(),
+      'color': color.value,
+      'size': size,
+      'opacity': opacity,
+      'strokeType': strokeType.toString(),
+    };
+  }
+  
 }

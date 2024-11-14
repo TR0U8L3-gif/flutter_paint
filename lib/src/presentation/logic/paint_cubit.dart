@@ -2,18 +2,22 @@ import 'dart:async';
 
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_paint/config/injectable/injectable.dart';
 import 'package:flutter_paint/core/common/domain/image_file.dart';
 import 'package:flutter_paint/core/common/domain/stroke.dart';
 import 'package:flutter_paint/core/common/domain/undo_redo.dart';
 import 'package:flutter_paint/core/extensions/drawing_tool_extensions.dart';
 import 'package:flutter_paint/core/utils/enums/drawing_tool.dart';
 import 'package:flutter_paint/core/utils/enums/stroke_type.dart';
+import 'package:flutter_paint/core/utils/response.dart';
 import 'package:flutter_paint/src/domain/usecases/export_file_use_case.dart';
 import 'package:flutter_paint/src/domain/usecases/import_file_use_case.dart';
 import 'package:flutter_paint/src/domain/usecases/save_file_use_case.dart';
 import 'package:flutter_paint/src/presentation/logic/save_load_data.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 
 part 'paint_state.dart';
@@ -339,7 +343,10 @@ class PaintCubit extends Cubit<PaintState> {
     queue.add(SaveFileData(imageFile, boundary, isFile));
   }
 
-  void onImportFile({required String? path, required ImageFile imageFile, required bool isFile}) {
+  void onImportFile(
+      {required String? path,
+      required ImageFile imageFile,
+      required bool isFile}) {
     if (path == null || path.isEmpty) {
       emit(const PaintMessage('Error importing file: path is empty'));
       return;
@@ -348,19 +355,26 @@ class PaintCubit extends Cubit<PaintState> {
   }
 
   void _loadFile(LoadFileData event) {
-    _importFileUseCase
-        .call(ImportFileUseCaseParams(
-      imageFile: event.imageFile,
-      path: event.path,
-      isFile: event.isFile,
-    ))
-        .then((result) {
+    emit(PaintMessage(
+        'Loading file ${event.imageFile.extension} at ${event.path}'));
+
+    final now = DateTime.now();
+
+    // Use an isolate to load the file
+    compute(_loadFileInIsolate, {
+      'imageFile': event.imageFile,
+      'path': event.path,
+      'isFile': event.isFile,
+      'usecase': _importFileUseCase
+    }).then((result) {
       result.fold(
         (failure) =>
             emit(PaintMessage(failure.message ?? 'Unknown error loading file')),
-        (image) {
-          final stroke = BitMapStroke(pixels: image.pixels);
-          
+        (stroke) async {
+          await stroke.loadImage();
+          final then = DateTime.now();
+          emit(PaintMessage(
+              'File loaded in ${then.difference(now).inSeconds} seconds'));
           memento.add(stroke);
           safeEmit(
             _lastBuildState.copyWith(
@@ -373,27 +387,126 @@ class PaintCubit extends Cubit<PaintState> {
         },
       );
     });
+
+    // _importFileUseCase
+    //     .call(ImportFileUseCaseParams(
+    //   imageFile: event.imageFile,
+    //   path: event.path,
+    //   isFile: event.isFile,
+    // ))
+    //     .then((result) {
+    //   result.fold(
+    //     (failure) =>
+    //         emit(PaintMessage(failure.message ?? 'Unknown error loading file')),
+    //     (image) {
+    //       final stroke = ImageStroke(pixels: image.pixels);
+    //       stroke.loadImage();
+
+    //       memento.add(stroke);
+    //       safeEmit(
+    //         _lastBuildState.copyWith(
+    //           strokes: List.from(memento.undoStack),
+    //           currentStroke: () => null,
+    //           canUndo: memento.canUndo,
+    //           canRedo: memento.canRedo,
+    //         ),
+    //       );
+    //     },
+    //   );
+    // });
   }
 
   void _saveFile(SaveFileData event) {
-    _exportFileUseCase
-        .call(ExportFileUseCaseParams(
-      boundary: event.boundary,
-      imageFile: event.imageFile,
-      isFile: event.isFile,
-    ))
-        .then((result) {
+    emit(PaintMessage('Saving ${event.imageFile.extension} file...'));
+
+    // Use an isolate for saving the file
+    compute(_saveFileInIsolate, {
+      'boundary': event.boundary,
+      'imageFile': event.imageFile,
+      'isFile': event.isFile,
+      'usecase': _exportFileUseCase
+    }).then((result) {
       result.fold(
         (failure) =>
             emit(PaintMessage(failure.message ?? 'Unknown error saving file')),
         (success) => emit(PaintMessage(success)),
       );
     });
+    // _exportFileUseCase
+    //     .call(ExportFileUseCaseParams(
+    //   boundary: event.boundary,
+    //   imageFile: event.imageFile,
+    //   isFile: event.isFile,
+    // ))
+    //     .then((result) {
+    //   result.fold(
+    //     (failure) =>
+    //         emit(PaintMessage(failure.message ?? 'Unknown error saving file')),
+    //     (success) => emit(PaintMessage(success)),
+    //   );
+    // });
   }
 
   @override
   Future<void> close() {
     queue.close();
     return super.close();
+  }
+}
+
+/// Function to load the file in an isolate
+Future<Either<Failure, ImageStroke>> _loadFileInIsolate(
+    Map<String, dynamic> params) async {
+  final imageFile = params['imageFile'];
+  final path = params['path'];
+  final isFile = params['isFile'];
+  final usecase = params['usecase'];
+  try {
+    // Process the file using your import file use case
+    final result = await (usecase as ImportFileUseCase).call(
+      ImportFileUseCaseParams(
+        imageFile: imageFile,
+        path: path,
+        isFile: isFile,
+      ),
+    );
+
+    return result.fold(
+      (failure) => Left(failure),
+      (image) {
+        // Create the ImageStroke with pixels
+        final stroke = ImageStroke(pixels: image.pixels);
+        return Right(stroke);
+      },
+    );
+  } catch (e) {
+    return Left(Failure(message: e.toString()));
+  }
+}
+
+/// Function to save the file in an isolate
+Future<Either<Failure, String>> _saveFileInIsolate(
+    Map<String, dynamic> params) async {
+  final boundary = params['boundary'];
+  final imageFile = params['imageFile'];
+  final isFile = params['isFile'];
+  final usecase = params['usecase'];
+
+  try {
+    // Process saving the file using your export file use case
+    final result = await (usecase as ExportFileUseCase).call(
+      ExportFileUseCaseParams(
+        boundary: boundary,
+        imageFile: imageFile,
+        isFile: isFile,
+      ),
+    );
+
+    return result.fold(
+      (failure) => Left(failure),
+      (success) => Right(success),
+    );
+  } catch (e) {
+    return Left(Failure(message: e.toString()));
   }
 }

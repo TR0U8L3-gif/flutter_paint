@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_paint/core/utils/enums/stroke_type.dart';
 
@@ -82,15 +83,13 @@ abstract class Stroke {
           size: size,
           opacity: opacity,
         );
-      case StrokeType.bitmap:
-        return BitMapStroke(
+      case StrokeType.image:
+        return ImageStroke(
           points: points,
           pixels: (json['pixels'] as List<dynamic>)
-              .map(
-                (row) => (row as List<dynamic>)
-                    .map((color) => Color(color as int))
-                    .toList(),
-              )
+              .map((row) => (row as List<dynamic>)
+                  .map((color) => Color(color as int))
+                  .toList())
               .toList(),
           color: color,
           size: size,
@@ -334,20 +333,54 @@ class SquareStroke extends Stroke {
   }
 }
 
-class BitMapStroke extends Stroke {
+// ImageStroke class
+class ImageStroke extends Stroke {
   final List<List<Color>> pixels;
+  late final ui.Image image;
 
-  BitMapStroke({
+  ImageStroke({
     super.points = const [],
     required this.pixels,
     super.color,
     super.size,
     super.opacity,
-  }) : super(strokeType: StrokeType.bitmap);
-  
+    super.strokeType = StrokeType.image,
+  });
+
+  /// Converts a List<List<Color>> to a ui.Image
+  static Future<ui.Image> createImageFromColors(List<List<Color>> pixels) async{
+    final int width = pixels[0].length;
+    final int height = pixels.length;
+    final pictureRecorder = ui.PictureRecorder();
+    final canvas = Canvas(pictureRecorder);
+    final paint = Paint();
+
+    // Drawing the colors on a canvas
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < width; x++) {
+        paint.color = pixels[y][x];
+        canvas.drawRect(Rect.fromLTWH(x.toDouble(), y.toDouble(), 1, 1), paint);
+      }
+    }
+
+    final picture = pictureRecorder.endRecording();
+    return await picture.toImage(width, height);
+  }
+
+  Future<void> loadImage() async {
+    image = await createImageFromColors(pixels);
+  }
+
   @override
-  Stroke copyWith({List<Offset>? points, Color? color, double? size, double? opacity, List<List<Color>>? pixels}) {
-    return BitMapStroke(
+  Stroke copyWith({
+    List<Offset>? points,
+    List<List<Color>>? pixels,
+    Color? color,
+    double? size,
+    double? opacity,
+    ui.Image? image,
+  }) {
+    return ImageStroke(
       points: points ?? this.points,
       pixels: pixels ?? this.pixels,
       color: color ?? this.color,
@@ -355,17 +388,18 @@ class BitMapStroke extends Stroke {
       opacity: opacity ?? this.opacity,
     );
   }
-  
+
   @override
   Map<String, dynamic> toJson() {
     return {
       'points': points.map((point) => [point.dx, point.dy]).toList(),
-      'pixels': pixels.map((row) => row.map((color) => color.value).toList()).toList(),
+      'pixels': pixels
+          .map((row) => row.map((color) => color.value).toList())
+          .toList(),
       'color': color.value,
       'size': size,
       'opacity': opacity,
       'strokeType': strokeType.toString(),
     };
   }
-  
 }

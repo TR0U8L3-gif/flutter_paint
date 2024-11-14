@@ -5,7 +5,7 @@ enum StrokeType {
   polygon,
   square,
   circle,
-  bitmap;
+  image;
 
   static StrokeType fromString(String value) {
     switch (value) {
@@ -21,8 +21,8 @@ enum StrokeType {
         return StrokeType.square;
       case 'circle':
         return StrokeType.circle;
-      case 'bitmap':
-        return StrokeType.bitmap;
+      case 'image':
+        return StrokeType.image;
       default:
         return StrokeType.normal;
     }
@@ -43,8 +43,8 @@ enum StrokeType {
         return 'square';
       case StrokeType.circle:
         return 'circle';
-      case StrokeType.bitmap:
-        return 'bitmap';
+      case StrokeType.image:
+        return 'image';
     }
   }
 }

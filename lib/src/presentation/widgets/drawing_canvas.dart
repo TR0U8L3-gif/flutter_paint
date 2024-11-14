@@ -1,5 +1,5 @@
 import 'dart:math';
-
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_paint/core/extensions/drawing_tool_extensions.dart';
 import 'package:flutter_paint/core/extensions/offset_extensions.dart';
@@ -210,36 +210,8 @@ class _DrawingCanvasPainter extends CustomPainter {
           continue;
         }
 
-        if (strokeData is BitMapStroke) {
-          final height = strokeData.pixels.length;
-          final width = strokeData.pixels[0].length;
-          print ('width: $width, height: $height');
-          print('size: $size');
-
-          // Calculate scale factors based on target size and actual bitmap dimensions
-          final scaleX = size.width / width;
-          final scaleY = size.height / height;
-          const skip = 2;
-
-          // Iterate over each pixel in the bitmap and draw it scaled on the canvas
-          for (int i = 0; i < width; i+=skip) {
-            for (int j = 0; j < height; j+=skip) {
-              final color = strokeData.pixels[j][i];
-              final paint = Paint()
-                ..color = color
-                ..style = PaintingStyle.fill;
-
-              // Scale each pixel's position and size
-              final rect = Rect.fromLTWH(
-                i * scaleX, // Scaled x position
-                j * scaleY, // Scaled y position
-                scaleX * skip, // Scaled width
-                scaleY * skip, // Scaled height
-              );
-
-              canvas.drawRect(rect, paint);
-            }
-          }
+        if (strokeData is ImageStroke) {
+          canvas.drawImage(strokeData.image, Offset.zero, paint);
           continue;
         }
       }

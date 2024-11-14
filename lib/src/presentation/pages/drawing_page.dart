@@ -135,6 +135,13 @@ class _DrawingPageState extends State<DrawingPage>
                           isFile: isFile,
                         );
                       },
+                      loadFile: (extension) async{
+                        final result = await FilePicker.platform.pickFiles(type: FileType.image);
+                        paintCubit.loadFile(
+                          path: result?.files.single.path,
+                          extension: extension,
+                        );
+                      },
                     ),
                   ),
                 ),

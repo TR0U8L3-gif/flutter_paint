@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
@@ -14,6 +15,7 @@ import 'package:flutter_paint/core/utils/enums/stroke_type.dart';
 import 'package:flutter_paint/core/utils/response.dart';
 import 'package:flutter_paint/src/domain/usecases/export_file_use_case.dart';
 import 'package:flutter_paint/src/domain/usecases/import_file_use_case.dart';
+import 'package:flutter_paint/src/domain/usecases/load_file_use_case.dart';
 import 'package:flutter_paint/src/domain/usecases/save_file_use_case.dart';
 import 'package:flutter_paint/src/presentation/logic/save_load_data.dart';
 import 'package:fpdart/fpdart.dart';
@@ -41,9 +43,11 @@ class PaintCubit extends Cubit<PaintState> {
     required SaveFileUseCase saveFileUseCase,
     required ExportFileUseCase exportFileUseCase,
     required ImportFileUseCase importFileUseCase,
+    required LoadFileUseCase loadFileUseCase,
   })  : _saveFileUseCase = saveFileUseCase,
         _exportFileUseCase = exportFileUseCase,
         _importFileUseCase = importFileUseCase,
+        _loadFileUseCase = loadFileUseCase,
         super(_initialState) {
     _initializeCubit();
   }
@@ -53,6 +57,8 @@ class PaintCubit extends Cubit<PaintState> {
   final ExportFileUseCase _exportFileUseCase;
 
   final ImportFileUseCase _importFileUseCase;
+
+  final LoadFileUseCase _loadFileUseCase;
 
   PaintIdle _lastBuildState = _initialState;
 
@@ -325,6 +331,49 @@ class PaintCubit extends Cubit<PaintState> {
           if (success != null) {
             emit(PaintMessage(success));
           }
+        },
+      );
+    });
+  }
+
+  void loadFile({required String? path, required String extension}) {
+    if (path == null || path.isEmpty) {
+      emit(const PaintMessage('Error loading file: path is empty'));
+      return;
+    }
+
+    if (extension != 'jpeg' && extension != 'png') {
+      emit(
+          const PaintMessage('Error loading file: extension is not supported'));
+      return;
+    }
+
+    emit(PaintMessage('Loading $extension file...'));
+
+    _loadFileUseCase
+        .call(LoadFileUseCaseParams(
+      extension: extension,
+      path: path,
+    ))
+        .then((result) {
+      result.fold(
+        (failure) =>
+            emit(PaintMessage(failure.message ?? 'Unknown error loading file')),
+        (result) async {
+          final imageData = await decodeImageFromList(result);
+
+          final stroke = ImageStroke(pixels: result, height: imageData.height, width: imageData.width);
+          stroke.setImage(imageData);
+
+          memento.add(stroke);
+          safeEmit(
+            _lastBuildState.copyWith(
+              strokes: List.from(memento.undoStack),
+              currentStroke: () => null,
+              canUndo: memento.canUndo,
+              canRedo: memento.canRedo,
+            ),
+          );
         },
       );
     });

@@ -18,6 +18,8 @@ abstract class PaintLocalDataSource {
   Future<String> saveFileFILE(ImageFile image);
   
   Future<File> readFileFILE(String path);
+
+  Future<File> loadFile(String path, String extension);
 }
 
 @Singleton(as: PaintLocalDataSource)
@@ -163,6 +165,20 @@ class PaintLocalDataSourceImpl implements PaintLocalDataSource {
       return 'File saved at: $filePath';
     } catch (e) {
       throw Exception('Error saving file: $e');
+    }
+  }
+  
+  @override
+  Future<File> loadFile(String path, String extension) async {
+    try {
+      final File file = File(path);
+      if (await file.exists()) {
+        return file;
+      } else {
+        throw Exception('File not found at: $path');
+      }
+    } catch (e) {
+      throw Exception('Error reading file at $path: $e');
     }
   }
 }

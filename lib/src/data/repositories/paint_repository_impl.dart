@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/rendering.dart';
 import 'package:flutter_paint/core/common/domain/image_file.dart';
 import 'package:flutter_paint/core/utils/response.dart';
@@ -54,6 +56,17 @@ class PaintRepositoryImpl implements PaintRepository {
       return right(imageFile);
     } catch (e) {
       return left(Failure(message: 'Error importing file: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Uint8List>> loadFile(String path, String extension) async {
+    try {
+      final file = await _localDataSource.loadFile(path, extension);
+      final result = await file.readAsBytes();
+      return right(result);
+    } catch (e) {
+      return left(Failure(message: 'Error saving file: $e'));
     }
   }
   

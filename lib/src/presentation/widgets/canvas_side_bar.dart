@@ -32,6 +32,7 @@ class CanvasSideBar extends StatelessWidget {
     required this.saveFile,
     required this.onExport,
     required this.onImport,
+    required this.loadFile,
   });
 
   final GlobalKey canvasGlobalKey;
@@ -69,6 +70,7 @@ class CanvasSideBar extends StatelessWidget {
     RenderRepaintBoundary? boundary,
     String fileExtension,
   ) saveFile;
+  final void Function(String fileExtension) loadFile;
 
   @override
   Widget build(BuildContext context) {
@@ -369,6 +371,23 @@ class CanvasSideBar extends StatelessWidget {
               ),
               Divider(
                 color: theme.onPrimaryContainer,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Flexible(
+                    child: TextButton(
+                      child: const Text('Import PNG'),
+                      onPressed: () => loadFile('png'),
+                    ),
+                  ),
+                  Flexible(
+                    child: TextButton(
+                      child: const Text('Import JPEG'),
+                      onPressed: () => loadFile('jpeg'),
+                    ),
+                  ),
+                ],
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,

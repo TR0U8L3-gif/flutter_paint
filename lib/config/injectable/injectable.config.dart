@@ -20,6 +20,7 @@ import '../../src/domain/usecases/import_file_use_case.dart' as _i526;
 import '../../src/domain/usecases/load_file_use_case.dart' as _i1051;
 import '../../src/domain/usecases/save_file_use_case.dart' as _i273;
 import '../../src/presentation/logic/color_cubit.dart' as _i793;
+import '../../src/presentation/logic/image_processing_cubit.dart' as _i1026;
 import '../../src/presentation/logic/paint_cubit.dart' as _i788;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -34,6 +35,8 @@ extension GetItInjectableX on _i174.GetIt {
       environmentFilter,
     );
     gh.factory<_i793.ColorCubit>(() => _i793.ColorCubit());
+    gh.factory<_i1026.ImageProcessingCubit>(
+        () => _i1026.ImageProcessingCubit());
     gh.singleton<_i280.ThemeProvider>(() => _i280.ThemeProvider());
     gh.singleton<_i1052.PaintLocalDataSource>(
         () => _i1052.PaintLocalDataSourceImpl());

@@ -1,6 +1,5 @@
 import 'dart:async';
-import 'dart:math';
-
+import 'dart:ui' as ui;
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
@@ -498,6 +497,30 @@ class PaintCubit extends Cubit<PaintState> {
     //   );
     // });
   }
+
+  Future<Uint8List?> convertCanvasToUint8List(GlobalKey canvasGlobalKey) async {
+  try {
+    // Retrieve the RenderRepaintBoundary
+    RenderRepaintBoundary? boundary =
+        canvasGlobalKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+
+    if (boundary == null) {
+      return null;
+    }
+
+    // Capture the boundary as an image
+    ui.Image image = await boundary.toImage(pixelRatio: 3.0); // Adjust pixelRatio if needed
+
+    // Convert the image to byte data in PNG format
+    ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+
+    // Convert the ByteData to Uint8List
+    return byteData?.buffer.asUint8List();
+  } catch (e) {
+    print("Error capturing canvas: $e");
+    return null;
+  }
+}
 
   @override
   Future<void> close() {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' hide Image;
 import 'package:flutter/rendering.dart';
 import 'package:flutter_paint/core/common/domain/image_file.dart';
 import 'package:flutter_paint/core/utils/enums/drawing_tool.dart';
+import 'package:flutter_paint/src/presentation/pages/image_processing_page.dart';
 import 'package:flutter_paint/src/presentation/widgets/color_palette.dart';
 import 'package:flutter_paint/src/presentation/widgets/icon_box.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -32,7 +33,7 @@ class CanvasSideBar extends StatelessWidget {
     required this.saveFile,
     required this.onExport,
     required this.onImport,
-    required this.loadFile,
+    required this.loadFile, required this.filter,
   });
 
   final GlobalKey canvasGlobalKey;
@@ -71,6 +72,9 @@ class CanvasSideBar extends StatelessWidget {
     String fileExtension,
   ) saveFile;
   final void Function(String fileExtension) loadFile;
+  final void Function(
+    RenderRepaintBoundary? boundary,
+  ) filter;
 
   @override
   Widget build(BuildContext context) {
@@ -260,6 +264,19 @@ class CanvasSideBar extends StatelessWidget {
                     child: const Text('Clear'),
                   ),
                 ],
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Filters',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Divider(
+                color: theme.onPrimaryContainer,
+              ),
+              ElevatedButton(
+                onPressed: () => filter(canvasGlobalKey.currentContext?.findRenderObject()
+                              as RenderRepaintBoundary?),
+                child: const Text('Process Image'),
               ),
               const SizedBox(height: 20),
               const Text(

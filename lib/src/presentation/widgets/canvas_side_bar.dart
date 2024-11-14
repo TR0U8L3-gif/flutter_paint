@@ -2,7 +2,6 @@ import 'package:flutter/material.dart' hide Image;
 import 'package:flutter/rendering.dart';
 import 'package:flutter_paint/core/common/domain/image_file.dart';
 import 'package:flutter_paint/core/utils/enums/drawing_tool.dart';
-import 'package:flutter_paint/src/presentation/pages/image_processing_page.dart';
 import 'package:flutter_paint/src/presentation/widgets/color_palette.dart';
 import 'package:flutter_paint/src/presentation/widgets/icon_box.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -33,7 +32,9 @@ class CanvasSideBar extends StatelessWidget {
     required this.saveFile,
     required this.onExport,
     required this.onImport,
-    required this.loadFile, required this.filter,
+    required this.loadFile,
+    required this.filter,
+    required this.edit,
   });
 
   final GlobalKey canvasGlobalKey;
@@ -75,6 +76,9 @@ class CanvasSideBar extends StatelessWidget {
   final void Function(
     RenderRepaintBoundary? boundary,
   ) filter;
+  final void Function(
+    RenderRepaintBoundary? boundary,
+  ) edit;
 
   @override
   Widget build(BuildContext context) {
@@ -267,16 +271,26 @@ class CanvasSideBar extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               const Text(
-                'Filters',
+                'Advanced',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               Divider(
                 color: theme.onPrimaryContainer,
               ),
-              ElevatedButton(
-                onPressed: () => filter(canvasGlobalKey.currentContext?.findRenderObject()
-                              as RenderRepaintBoundary?),
-                child: const Text('Process Image'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => filter(canvasGlobalKey.currentContext
+                        ?.findRenderObject() as RenderRepaintBoundary?),
+                    child: const Text('Filter Image'),
+                  ),
+                  TextButton(
+                    onPressed: () => edit(canvasGlobalKey.currentContext
+                        ?.findRenderObject() as RenderRepaintBoundary?),
+                    child: const Text('Edit Image'),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
               const Text(

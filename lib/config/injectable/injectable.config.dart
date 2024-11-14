@@ -20,6 +20,7 @@ import '../../src/domain/usecases/import_file_use_case.dart' as _i526;
 import '../../src/domain/usecases/load_file_use_case.dart' as _i1051;
 import '../../src/domain/usecases/save_file_use_case.dart' as _i273;
 import '../../src/presentation/logic/color_cubit.dart' as _i793;
+import '../../src/presentation/logic/image_editor_cubit.dart' as _i819;
 import '../../src/presentation/logic/image_processing_cubit.dart' as _i1026;
 import '../../src/presentation/logic/paint_cubit.dart' as _i788;
 
@@ -35,6 +36,7 @@ extension GetItInjectableX on _i174.GetIt {
       environmentFilter,
     );
     gh.factory<_i793.ColorCubit>(() => _i793.ColorCubit());
+    gh.factory<_i819.ImageEditorCubit>(() => _i819.ImageEditorCubit());
     gh.factory<_i1026.ImageProcessingCubit>(
         () => _i1026.ImageProcessingCubit());
     gh.singleton<_i280.ThemeProvider>(() => _i280.ThemeProvider());
@@ -46,10 +48,10 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i613.ExportFileUseCase(repository: gh<_i652.PaintRepository>()));
     gh.singleton<_i526.ImportFileUseCase>(
         () => _i526.ImportFileUseCase(repository: gh<_i652.PaintRepository>()));
-    gh.singleton<_i273.SaveFileUseCase>(
-        () => _i273.SaveFileUseCase(repository: gh<_i652.PaintRepository>()));
     gh.singleton<_i1051.LoadFileUseCase>(
         () => _i1051.LoadFileUseCase(repository: gh<_i652.PaintRepository>()));
+    gh.singleton<_i273.SaveFileUseCase>(
+        () => _i273.SaveFileUseCase(repository: gh<_i652.PaintRepository>()));
     gh.factory<_i788.PaintCubit>(() => _i788.PaintCubit(
           saveFileUseCase: gh<_i273.SaveFileUseCase>(),
           exportFileUseCase: gh<_i613.ExportFileUseCase>(),

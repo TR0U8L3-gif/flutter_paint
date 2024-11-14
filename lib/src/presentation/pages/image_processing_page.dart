@@ -6,12 +6,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_paint/config/injectable/injectable.dart';
 import 'package:flutter_paint/src/presentation/logic/image_processing_cubit.dart';
 
-class ImageProcessingScreen extends StatelessWidget {
-  const ImageProcessingScreen(
-      {super.key, required this.imageBytes, required this.callback});
+class ImageProcessingPage extends StatelessWidget {
+  const ImageProcessingPage({
+    super.key,
+    required this.imageBytes,
+    required this.callback,
+  });
 
   final Uint8List imageBytes;
-  final void Function(ui.Image? image, Uint8List? pixels, int width, int height) callback;
+  final void Function(ui.Image? image, Uint8List? pixels, int width, int height)
+      callback;
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +76,8 @@ class ImageProcessingScreen extends StatelessWidget {
                             onPressed: () async {
                               final result = await cubit.set();
                               if (result == null) return;
-                              callback(result.$1, result.$2, result.$3, result.$4);
+                              callback(
+                                  result.$1, result.$2, result.$3, result.$4);
                               if (!context.mounted) return;
                               Navigator.pop(context);
                             },

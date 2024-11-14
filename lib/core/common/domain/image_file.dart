@@ -298,46 +298,85 @@ class PPMFile extends ImageFile {
   }
 
   Future<void> _importAsBinary(Uint8List bytes) async {
-    // Read the header and skip comments
-    int index = 2;
-    final header = StringBuffer();
-    while (header.toString().split('\n').length < 3) {
-      final char = String.fromCharCode(bytes[index++]);
-      if (char == '#') {
-        // Skip the comment line
-        while (bytes[index++] != 10); // 10 = '\n'
-      } else {
-        header.write(char);
+  int index = 2; // Start after the 'P6' header
+  int width = -1;
+  int height = -1;
+  int maxColorValue = -1;
+
+  // Parse the header to extract width, height, and max color value
+  while (index < bytes.length) {
+    final char = String.fromCharCode(bytes[index++]);
+
+    if (char == '#') {
+      // Skip the comment line
+      while (index < bytes.length && bytes[index++] != 10); // 10 = '\n'
+    } else if (char.trim().isNotEmpty) {
+      // Collect header data until width, height, and maxColorValue are parsed
+      final headerData = StringBuffer();
+      headerData.write(char);
+
+      while (index < bytes.length) {
+        final nextChar = String.fromCharCode(bytes[index++]);
+        if (nextChar == '#') {
+          // Skip comments
+          while (index < bytes.length && bytes[index++] != 10);
+          break;
+        } else if (nextChar == '\n' || nextChar.trim().isEmpty) {
+          if (headerData.toString().trim().isNotEmpty) {
+            final values = headerData
+                .toString()
+                .split(RegExp(r'\s+'))
+                .where((value) => value.trim().isNotEmpty)
+                .toList();
+
+            for (final value in values) {
+              if (width == -1) {
+                width = int.parse(value);
+              } else if (height == -1) {
+                height = int.parse(value);
+              } else if (maxColorValue == -1) {
+                maxColorValue = int.parse(value);
+              }
+              if (width != -1 && height != -1 && maxColorValue != -1) break;
+            }
+          }
+          break;
+        } else {
+          headerData.write(nextChar);
+        }
       }
     }
 
-    final headerLines = header
-        .toString()
-        .split('\n')
-        .where((line) => line.trim().isNotEmpty)
-        .toList();
-    final dimensions = headerLines[1].split(RegExp(r'\s+'));
-    final width = int.parse(dimensions[0]);
-    final height = int.parse(dimensions[1]);
-    final maxColorValue = int.parse(headerLines[2].trim());
+    if (width != -1 && height != -1 && maxColorValue != -1) break;
+  }
 
-    if (maxColorValue != 255) {
-      throw const FormatException('Unsupported max color value (must be 255)');
-    }
+  if (width == -1 || height == -1 || maxColorValue == -1) {
+    throw const FormatException('Invalid or missing header data in PPM file');
+  }
 
-    // Initialize the pixels array
-    pixels = List.generate(height, (_) => List.filled(width, Colors.black));
+  if (maxColorValue != 255) {
+    throw const FormatException('Unsupported max color value (must be 255)');
+  }
 
-    // Process binary pixel data
-    for (int y = 0; y < height; y++) {
-      for (int x = 0; x < width; x++) {
-        final r = bytes[index++];
-        final g = bytes[index++];
-        final b = bytes[index++];
-        pixels[y][x] = Color.fromARGB(255, r, g, b);
-      }
+  // Initialize the pixels array
+  pixels = List.generate(height, (_) => List.filled(width, Colors.black));
+
+  // Skip any additional newline characters after the header
+  while (index < bytes.length && (bytes[index] == 10 || bytes[index] == 32)) {
+    index++; // 10 = '\n', 32 = ' '
+  }
+
+  // Process binary pixel data
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      final r = bytes[index++];
+      final g = bytes[index++];
+      final b = bytes[index++];
+      pixels[y][x] = Color.fromARGB(255, r, g, b);
     }
   }
+}
+
 
   Future<void> _importAsASCII(File file) async {
     // Read the file as raw bytes and decode it, allowing malformed characters

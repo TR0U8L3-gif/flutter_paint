@@ -298,91 +298,105 @@ class PPMFile extends ImageFile {
   }
 
   Future<void> _importAsBinary(Uint8List bytes) async {
-  int index = 2; // Start after the 'P6' header
-  int width = -1;
-  int height = -1;
-  int maxColorValue = -1;
+    int index = 2; // Start after the 'P6' header
+    int width = -1;
+    int height = -1;
+    int maxColorValue = -1;
 
-  // Parse the header to extract width, height, and max color value
-  while (index < bytes.length) {
-    final char = String.fromCharCode(bytes[index++]);
+    // Parse the header to extract width, height, and maxColorValue
+    while (width == -1 || height == -1 || maxColorValue == -1) {
+      final char = String.fromCharCode(bytes[index++]);
 
-    if (char == '#') {
-      // Skip the comment line
-      while (index < bytes.length && bytes[index++] != 10); // 10 = '\n'
-    } else if (char.trim().isNotEmpty) {
-      // Collect header data until width, height, and maxColorValue are parsed
-      final headerData = StringBuffer();
-      headerData.write(char);
+      if (char == '#') {
+        // Skip the comment line
+        while (index < bytes.length && bytes[index++] != 10); // 10 = '\n'
+      } else if (char.trim().isNotEmpty) {
+        final headerData = StringBuffer();
+        headerData.write(char);
 
-      while (index < bytes.length) {
-        final nextChar = String.fromCharCode(bytes[index++]);
-        if (nextChar == '#') {
-          // Skip comments
-          while (index < bytes.length && bytes[index++] != 10);
-          break;
-        } else if (nextChar == '\n' || nextChar.trim().isEmpty) {
-          if (headerData.toString().trim().isNotEmpty) {
-            final values = headerData
-                .toString()
-                .split(RegExp(r'\s+'))
-                .where((value) => value.trim().isNotEmpty)
-                .toList();
+        while (index < bytes.length) {
+          final nextChar = String.fromCharCode(bytes[index++]);
+          if (nextChar == '#') {
+            // Skip comments
+            while (index < bytes.length && bytes[index++] != 10);
+            break;
+          } else if (nextChar == '\n' || nextChar.trim().isEmpty) {
+            if (headerData.toString().trim().isNotEmpty) {
+              final values = headerData
+                  .toString()
+                  .split(RegExp(r'\s+'))
+                  .where((value) => value.trim().isNotEmpty)
+                  .map(int.parse)
+                  .toList();
 
-            for (final value in values) {
-              if (width == -1) {
-                width = int.parse(value);
-              } else if (height == -1) {
-                height = int.parse(value);
-              } else if (maxColorValue == -1) {
-                maxColorValue = int.parse(value);
+              for (final value in values) {
+                if (width == -1) {
+                  width = value;
+                } else if (height == -1) {
+                  height = value;
+                } else if (maxColorValue == -1) {
+                  maxColorValue = value;
+                }
+                if (width != -1 && height != -1 && maxColorValue != -1) break;
               }
-              if (width != -1 && height != -1 && maxColorValue != -1) break;
             }
+            break;
+          } else {
+            headerData.write(nextChar);
           }
-          break;
-        } else {
-          headerData.write(nextChar);
         }
       }
     }
 
-    if (width != -1 && height != -1 && maxColorValue != -1) break;
-  }
+    if (maxColorValue == -1 || width == -1 || height == -1) {
+      throw const FormatException('Invalid or missing header data in PPM file');
+    }
 
-  if (width == -1 || height == -1 || maxColorValue == -1) {
-    throw const FormatException('Invalid or missing header data in PPM file');
-  }
+    // Initialize the pixels array
+    pixels = List.generate(height, (_) => List.filled(width, Colors.black));
 
-  if (maxColorValue != 255) {
-    throw const FormatException('Unsupported max color value (must be 255)');
-  }
+    // Ensure there are enough bytes for the pixel data
+    final requiredBytes = width * height * (maxColorValue > 255 ? 6 : 3);
+    if (bytes.length - index < requiredBytes) {
+      throw const FormatException('Not enough pixel data in the file');
+    }
 
-  // Initialize the pixels array
-  pixels = List.generate(height, (_) => List.filled(width, Colors.black));
+    // Scale factor for 16-bit to 8-bit conversion
+    final scaleFactor = maxColorValue > 255 ? maxColorValue / 255.0 : 1.0;
 
-  // Skip any additional newline characters after the header
-  while (index < bytes.length && (bytes[index] == 10 || bytes[index] == 32)) {
-    index++; // 10 = '\n', 32 = ' '
-  }
-
-  // Process binary pixel data
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      final r = bytes[index++];
-      final g = bytes[index++];
-      final b = bytes[index++];
-      pixels[y][x] = Color.fromARGB(255, r, g, b);
+    // Process binary pixel data
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < width; x++) {
+        if (maxColorValue > 255) {
+          // 16-bit data: Read 2 bytes per channel
+          if (index + 5 >= bytes.length) {
+            throw const FormatException(
+                'Not enough bytes for 16-bit pixel data');
+          }
+          final r = (bytes[index++] << 8 | bytes[index++]) / scaleFactor;
+          final g = (bytes[index++] << 8 | bytes[index++]) / scaleFactor;
+          final b = (bytes[index++] << 8 | bytes[index++]) / scaleFactor;
+          pixels[y][x] = Color.fromARGB(255, r.round(), g.round(), b.round());
+        } else {
+          // 8-bit data: Read 1 byte per channel
+          if (index + 2 >= bytes.length) {
+            throw const FormatException(
+                'Not enough bytes for 8-bit pixel data');
+          }
+          final r = bytes[index++] / scaleFactor;
+          final g = bytes[index++] / scaleFactor;
+          final b = bytes[index++] / scaleFactor;
+          pixels[y][x] = Color.fromARGB(255, r.round(), g.round(), b.round());
+        }
+      }
     }
   }
-}
-
 
   Future<void> _importAsASCII(File file) async {
-    // Read the file as raw bytes and decode it, allowing malformed characters
+    // Read the file and decode it
     final rawBytes = await file.readAsBytes();
-    final allLines = const LineSplitter().convert(utf8.decode(rawBytes,
-        allowMalformed: true)); // Gracefully handle malformed UTF-8
+    final allLines = LineSplitter().convert(
+        utf8.decode(rawBytes, allowMalformed: true)); // Handle malformed UTF-8
 
     // Filter out comments and empty lines
     final contentLines = allLines
@@ -393,53 +407,40 @@ class PPMFile extends ImageFile {
       throw const FormatException('Invalid PPM ASCII format');
     }
 
-    // Parse dimensions (width and height)
+    // Parse dimensions and max color value
     int lineIndex = 1;
     int width = -1;
     int height = -1;
 
-    while (lineIndex < contentLines.length) {
-      // Split the current line, ignoring inline comments
-      final values =
-          contentLines[lineIndex++].split('#')[0].trim().split(RegExp(r'\s+'));
-      for (final value in values) {
-        if (value.isNotEmpty) {
-          if (width == -1) {
-            width = int.parse(value);
-          } else if (height == -1) {
-            height = int.parse(value);
-          }
-          if (width != -1 && height != -1) break;
+    while (width == -1 || height == -1) {
+      final line = contentLines[lineIndex++].split('#')[0].trim();
+      if (line.isNotEmpty) {
+        final dimensions = line.split(RegExp(r'\s+')).map(int.parse).toList();
+        if (dimensions.length == 2) {
+          width = dimensions[0];
+          height = dimensions[1];
         }
       }
-      if (width != -1 && height != -1) break;
     }
 
-    if (width == -1 || height == -1) {
-      throw const FormatException('Invalid or missing dimensions in PPM file');
-    }
-
-    // Parse max color value
     int maxColorValue = -1;
-    while (lineIndex < contentLines.length) {
-      final value = contentLines[lineIndex++].split('#')[0].trim();
-      if (value.isNotEmpty) {
-        maxColorValue = int.parse(value);
-        break;
+    while (maxColorValue == -1) {
+      final line = contentLines[lineIndex++].split('#')[0].trim();
+      if (line.isNotEmpty) {
+        maxColorValue = int.parse(line);
       }
-    }
-
-    if (maxColorValue != 255) {
-      throw const FormatException('Unsupported max color value (must be 255)');
     }
 
     // Initialize the pixels array
     pixels = List.generate(height, (_) => List.filled(width, Colors.black));
 
-    // Extract and process pixel data, ignoring comments and whitespace
-    final pixelData = contentLines
+    // Scale factor for 16-bit to 8-bit conversion
+    final scaleFactor = maxColorValue > 255 ? maxColorValue / 255.0 : 1.0;
+
+    // Extract and process pixel data
+    final pixelValues = contentLines
         .skip(lineIndex)
-        .expand((line) => line.split('#')[0].split(RegExp(r'\s+')))
+        .expand((line) => line.split(RegExp(r'\s+')))
         .where((value) => value.trim().isNotEmpty)
         .map(int.parse)
         .toList();
@@ -447,9 +448,9 @@ class PPMFile extends ImageFile {
     int index = 0;
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
-        final r = pixelData[index++];
-        final g = pixelData[index++];
-        final b = pixelData[index++];
+        final r = (pixelValues[index++] / scaleFactor).round();
+        final g = (pixelValues[index++] / scaleFactor).round();
+        final b = (pixelValues[index++] / scaleFactor).round();
         pixels[y][x] = Color.fromARGB(255, r, g, b);
       }
     }

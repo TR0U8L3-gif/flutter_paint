@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -280,12 +281,23 @@ class PPMFile extends ImageFile {
     final file = File(path);
     final bytes = await file.readAsBytes();
 
-    if (bytes.length < 2 ||
-        String.fromCharCode(bytes[0]) != 'P' ||
-        String.fromCharCode(bytes[1]) != '6') {
-      throw const FormatException('Invalid PPM binary format');
+    if (bytes.length < 2 || String.fromCharCode(bytes[0]) != 'P') {
+      throw const FormatException('Invalid PPM format');
     }
 
+    final format = String.fromCharCode(bytes[1]);
+
+    if (format == '6') {
+      await _importAsBinary(bytes);
+    } else if (format == '3') {
+      await _importAsASCII(file);
+    } else {
+      throw const FormatException(
+          'Unsupported PPM format (only P3 and P6 are supported)');
+    }
+  }
+
+  Future<void> _importAsBinary(Uint8List bytes) async {
     // Read the header and skip comments
     int index = 2;
     final header = StringBuffer();
@@ -322,6 +334,83 @@ class PPMFile extends ImageFile {
         final r = bytes[index++];
         final g = bytes[index++];
         final b = bytes[index++];
+        pixels[y][x] = Color.fromARGB(255, r, g, b);
+      }
+    }
+  }
+
+  Future<void> _importAsASCII(File file) async {
+    // Read the file as raw bytes and decode it, allowing malformed characters
+    final rawBytes = await file.readAsBytes();
+    final allLines = const LineSplitter().convert(utf8.decode(rawBytes,
+        allowMalformed: true)); // Gracefully handle malformed UTF-8
+
+    // Filter out comments and empty lines
+    final contentLines = allLines
+        .where((line) => line.trim().isNotEmpty && !line.trim().startsWith('#'))
+        .toList();
+
+    if (contentLines.isEmpty || contentLines[0] != 'P3') {
+      throw const FormatException('Invalid PPM ASCII format');
+    }
+
+    // Parse dimensions (width and height)
+    int lineIndex = 1;
+    int width = -1;
+    int height = -1;
+
+    while (lineIndex < contentLines.length) {
+      // Split the current line, ignoring inline comments
+      final values =
+          contentLines[lineIndex++].split('#')[0].trim().split(RegExp(r'\s+'));
+      for (final value in values) {
+        if (value.isNotEmpty) {
+          if (width == -1) {
+            width = int.parse(value);
+          } else if (height == -1) {
+            height = int.parse(value);
+          }
+          if (width != -1 && height != -1) break;
+        }
+      }
+      if (width != -1 && height != -1) break;
+    }
+
+    if (width == -1 || height == -1) {
+      throw const FormatException('Invalid or missing dimensions in PPM file');
+    }
+
+    // Parse max color value
+    int maxColorValue = -1;
+    while (lineIndex < contentLines.length) {
+      final value = contentLines[lineIndex++].split('#')[0].trim();
+      if (value.isNotEmpty) {
+        maxColorValue = int.parse(value);
+        break;
+      }
+    }
+
+    if (maxColorValue != 255) {
+      throw const FormatException('Unsupported max color value (must be 255)');
+    }
+
+    // Initialize the pixels array
+    pixels = List.generate(height, (_) => List.filled(width, Colors.black));
+
+    // Extract and process pixel data, ignoring comments and whitespace
+    final pixelData = contentLines
+        .skip(lineIndex)
+        .expand((line) => line.split('#')[0].split(RegExp(r'\s+')))
+        .where((value) => value.trim().isNotEmpty)
+        .map(int.parse)
+        .toList();
+
+    int index = 0;
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < width; x++) {
+        final r = pixelData[index++];
+        final g = pixelData[index++];
+        final b = pixelData[index++];
         pixels[y][x] = Color.fromARGB(255, r, g, b);
       }
     }

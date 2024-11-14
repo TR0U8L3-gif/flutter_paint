@@ -262,4 +262,239 @@ class ImageEditorCubit extends Cubit<ImageEditorState> {
     );
     return completer.future;
   }
+
+  void niblack(int windowSize) async {
+    if (originalImage == null) {
+      emit(ImageEditorError("Brak obrazu do przetwarzania."));
+      return;
+    }
+
+    try {
+      final ui.Image image = await _decodeImageFromUint8List(originalImage!);
+      final ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+
+      if (byteData == null)
+        throw Exception("Nie udało się pobrać danych obrazu.");
+
+      Uint8List pixels = byteData.buffer.asUint8List();
+      Uint8List newPixels = Uint8List.fromList(pixels);
+
+      final width = image.width;
+      final height = image.height;
+      final offset = windowSize ~/ 2;
+
+      for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+          List<int> windowPixels = [];
+
+          for (int wy = -offset; wy <= offset; wy++) {
+            for (int wx = -offset; wx <= offset; wx++) {
+              int nx = x + wx;
+              int ny = y + wy;
+              if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                int pixelIndex = (ny * width + nx) * 4;
+                windowPixels.add(pixels[pixelIndex]);
+              }
+            }
+          }
+
+          final mean =
+              windowPixels.reduce((a, b) => a + b) ~/ windowPixels.length;
+          final stdDev = windowPixels.fold(
+                0,
+                (sum, p) => sum + ((p - mean) * (p - mean)),
+              ) /
+              windowPixels.length;
+
+          final threshold = mean - (0.2 * stdDev).toInt();
+          final pixelIndex = (y * width + x) * 4;
+          final intensity = pixels[pixelIndex];
+          final binaryValue = intensity >= threshold ? 255 : 0;
+
+          newPixels[pixelIndex] = binaryValue;
+          newPixels[pixelIndex + 1] = binaryValue;
+          newPixels[pixelIndex + 2] = binaryValue;
+        }
+      }
+
+      final binaryImage = await _createImageFromBytes(width, height, newPixels);
+      processedImage = await _encodeImageToUint8List(binaryImage);
+      emit(ImageProcessed(originalImage!, processedImage!));
+    } catch (e) {
+      emit(ImageEditorError("Nie udało się przetworzyć obrazu: $e"));
+    }
+  }
+
+  void sauvola(int windowSize) async {
+    if (originalImage == null) {
+      emit(ImageEditorError("Brak obrazu do przetwarzania."));
+      return;
+    }
+
+    try {
+      final ui.Image image = await _decodeImageFromUint8List(originalImage!);
+      final ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+
+      if (byteData == null)
+        throw Exception("Nie udało się pobrać danych obrazu.");
+
+      Uint8List pixels = byteData.buffer.asUint8List();
+      Uint8List newPixels = Uint8List.fromList(pixels);
+
+      final width = image.width;
+      final height = image.height;
+      final offset = windowSize ~/ 2;
+
+      for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+          List<int> windowPixels = [];
+
+          for (int wy = -offset; wy <= offset; wy++) {
+            for (int wx = -offset; wx <= offset; wx++) {
+              int nx = x + wx;
+              int ny = y + wy;
+              if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                int pixelIndex = (ny * width + nx) * 4;
+                windowPixels.add(pixels[pixelIndex]);
+              }
+            }
+          }
+
+          final mean =
+              windowPixels.reduce((a, b) => a + b) ~/ windowPixels.length;
+          final stdDev = windowPixels.fold(
+                0,
+                (sum, p) => sum + ((p - mean) * (p - mean)),
+              ) /
+              windowPixels.length;
+
+          final threshold = mean * (1 + 0.2 * ((stdDev / 128.0) - 1));
+          final pixelIndex = (y * width + x) * 4;
+          final intensity = pixels[pixelIndex];
+          final binaryValue = intensity >= threshold ? 255 : 0;
+
+          newPixels[pixelIndex] = binaryValue;
+          newPixels[pixelIndex + 1] = binaryValue;
+          newPixels[pixelIndex + 2] = binaryValue;
+        }
+      }
+
+      final binaryImage = await _createImageFromBytes(width, height, newPixels);
+      processedImage = await _encodeImageToUint8List(binaryImage);
+      emit(ImageProcessed(originalImage!, processedImage!));
+    } catch (e) {
+      emit(ImageEditorError("Nie udało się przetworzyć obrazu: $e"));
+    }
+  }
+
+  void meanIterativeSelection() async {
+    if (originalImage == null) {
+      emit(ImageEditorError("Brak obrazu do przetwarzania."));
+      return;
+    }
+
+    try {
+      final ui.Image image = await _decodeImageFromUint8List(originalImage!);
+      final ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+
+      if (byteData == null)
+        throw Exception("Nie udało się pobrać danych obrazu.");
+
+      Uint8List pixels = byteData.buffer.asUint8List();
+
+      // Iteracyjnie znajdowanie progu
+      int threshold = 128;
+      int newThreshold;
+      do {
+        int lowerSum = 0, lowerCount = 0;
+        int upperSum = 0, upperCount = 0;
+
+        for (int i = 0; i < pixels.length; i += 4) {
+          int intensity = pixels[i];
+          if (intensity < threshold) {
+            lowerSum += intensity;
+            lowerCount++;
+          } else {
+            upperSum += intensity;
+            upperCount++;
+          }
+        }
+
+        final lowerMean = lowerCount == 0 ? 0 : (lowerSum ~/ lowerCount);
+        final upperMean = upperCount == 0 ? 0 : (upperSum ~/ upperCount);
+        newThreshold = ((lowerMean + upperMean) ~/ 2);
+
+        if (newThreshold == threshold) break;
+        threshold = newThreshold;
+      } while (true);
+
+      final binaryImage = await _applyThreshold(image, threshold);
+      processedImage = await _encodeImageToUint8List(binaryImage);
+      emit(ImageProcessed(originalImage!, processedImage!));
+    } catch (e) {
+      emit(ImageEditorError("Nie udało się przetworzyć obrazu: $e"));
+    }
+  }
+
+  void percentBlackSelection(double percent) async {
+    if (originalImage == null) {
+      emit(ImageEditorError("Brak obrazu do przetwarzania."));
+      return;
+    }
+
+    try {
+      final ui.Image image = await _decodeImageFromUint8List(originalImage!);
+      final ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+
+      if (byteData == null)
+        throw Exception("Nie udało się pobrać danych obrazu.");
+
+      Uint8List pixels = byteData.buffer.asUint8List();
+      int totalPixels = image.width * image.height;
+      int blackPixelsTarget = (totalPixels * percent).round();
+
+      // Histogram i znalezienie progu
+      List<int> histogram = List.filled(256, 0);
+      for (int i = 0; i < pixels.length; i += 4) {
+        histogram[pixels[i]]++;
+      }
+
+      int cumulative = 0;
+      int threshold = 0;
+      for (int i = 0; i < 256; i++) {
+        cumulative += histogram[i];
+        if (cumulative >= blackPixelsTarget) {
+          threshold = i;
+          break;
+        }
+      }
+
+      final binaryImage = await _applyThreshold(image, threshold);
+      processedImage = await _encodeImageToUint8List(binaryImage);
+      emit(ImageProcessed(originalImage!, processedImage!));
+    } catch (e) {
+      emit(ImageEditorError("Nie udało się przetworzyć obrazu: $e"));
+    }
+  }
+
+    void restart() {
+    if (originalImage == null) return;
+    originalImage = originalImage;
+    emit(ImageProcessed(originalImage!, originalImage!));
+  }
+
+  Future<(ui.Image, Uint8List, int width, int height)?> set() async {
+    final imageBytes = processedImage ?? originalImage;
+    if (imageBytes == null) return null;
+
+    final codec = await ui.instantiateImageCodec(imageBytes);
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+
+    return (image, imageBytes, image.width, image.height);
+  }
 }

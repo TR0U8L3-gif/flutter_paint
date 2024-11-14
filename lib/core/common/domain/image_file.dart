@@ -395,7 +395,7 @@ class PPMFile extends ImageFile {
   Future<void> _importAsASCII(File file) async {
     // Read the file and decode it
     final rawBytes = await file.readAsBytes();
-    final allLines = LineSplitter().convert(
+    final allLines = const LineSplitter().convert(
         utf8.decode(rawBytes, allowMalformed: true)); // Handle malformed UTF-8
 
     // Filter out comments and empty lines
@@ -407,28 +407,37 @@ class PPMFile extends ImageFile {
       throw const FormatException('Invalid PPM ASCII format');
     }
 
-    // Parse dimensions and max color value
+    // Parse dimensions (width and height)
     int lineIndex = 1;
     int width = -1;
     int height = -1;
 
-    while (width == -1 || height == -1) {
+    while (lineIndex < contentLines.length && (width == -1 || height == -1)) {
       final line = contentLines[lineIndex++].split('#')[0].trim();
       if (line.isNotEmpty) {
         final dimensions = line.split(RegExp(r'\s+')).map(int.parse).toList();
-        if (dimensions.length == 2) {
+        if (dimensions.length >= 2) {
           width = dimensions[0];
           height = dimensions[1];
         }
       }
     }
 
+    if (width == -1 || height == -1) {
+      throw const FormatException('Missing width or height in PPM file');
+    }
+
+    // Parse max color value
     int maxColorValue = -1;
-    while (maxColorValue == -1) {
+    while (lineIndex < contentLines.length && maxColorValue == -1) {
       final line = contentLines[lineIndex++].split('#')[0].trim();
       if (line.isNotEmpty) {
         maxColorValue = int.parse(line);
       }
+    }
+
+    if (maxColorValue == -1) {
+      throw const FormatException('Missing max color value in PPM file');
     }
 
     // Initialize the pixels array
@@ -437,13 +446,19 @@ class PPMFile extends ImageFile {
     // Scale factor for 16-bit to 8-bit conversion
     final scaleFactor = maxColorValue > 255 ? maxColorValue / 255.0 : 1.0;
 
-    // Extract and process pixel data
+    // Process pixel data
     final pixelValues = contentLines
         .skip(lineIndex)
         .expand((line) => line.split(RegExp(r'\s+')))
         .where((value) => value.trim().isNotEmpty)
         .map(int.parse)
         .toList();
+
+    final expectedValues = width * height * 3;
+    if (pixelValues.length < expectedValues) {
+      throw FormatException(
+          'Insufficient pixel data: Expected $expectedValues values, but got ${pixelValues.length}');
+    }
 
     int index = 0;
     for (int y = 0; y < height; y++) {

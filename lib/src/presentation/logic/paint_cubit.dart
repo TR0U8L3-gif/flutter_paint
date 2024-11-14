@@ -361,7 +361,8 @@ class PaintCubit extends Cubit<PaintState> {
         (result) async {
           final imageData = await decodeImageFromList(result);
 
-          final stroke = ImageStroke(pixels: result, height: imageData.height, width: imageData.width);
+          final stroke = ImageStroke(
+              pixels: result, height: imageData.height, width: imageData.width);
           stroke.setImage(imageData);
 
           memento.add(stroke);
@@ -499,28 +500,57 @@ class PaintCubit extends Cubit<PaintState> {
   }
 
   Future<Uint8List?> convertCanvasToUint8List(GlobalKey canvasGlobalKey) async {
-  try {
-    // Retrieve the RenderRepaintBoundary
-    RenderRepaintBoundary? boundary =
-        canvasGlobalKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+    try {
+      // Retrieve the RenderRepaintBoundary
+      RenderRepaintBoundary? boundary = canvasGlobalKey.currentContext
+          ?.findRenderObject() as RenderRepaintBoundary?;
 
-    if (boundary == null) {
+      if (boundary == null) {
+        return null;
+      }
+
+      // Capture the boundary as an image
+      ui.Image image = await boundary.toImage(
+          pixelRatio: 3.0); // Adjust pixelRatio if needed
+
+      // Convert the image to byte data in PNG format
+      ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+
+      // Convert the ByteData to Uint8List
+      return byteData?.buffer.asUint8List();
+    } catch (e) {
+      print("Error capturing canvas: $e");
       return null;
     }
-
-    // Capture the boundary as an image
-    ui.Image image = await boundary.toImage(pixelRatio: 3.0); // Adjust pixelRatio if needed
-
-    // Convert the image to byte data in PNG format
-    ByteData? byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-
-    // Convert the ByteData to Uint8List
-    return byteData?.buffer.asUint8List();
-  } catch (e) {
-    print("Error capturing canvas: $e");
-    return null;
   }
-}
+
+  void set(ui.Image? image, Uint8List? pixels, int width, int height) {
+    if (pixels == null) {
+      emit(const PaintMessage('Error setting image: pixels are null'));
+      return;
+    }
+    if(image == null) {
+      emit(const PaintMessage('Error setting image: image is null'));
+      return;
+    }
+    final stroke = ImageStroke(pixels: pixels, width: width, height: height);
+    stroke.setImage(image);
+
+    clear();
+
+    memento.add(stroke);
+    
+    safeEmit(
+      _lastBuildState.copyWith(
+        strokes: List.from([stroke]),
+        currentStroke: () => null,
+        canUndo: memento.canUndo,
+        canRedo: memento.canRedo,
+      ),
+    );
+
+  }
 
   @override
   Future<void> close() {

@@ -155,7 +155,7 @@ class _DrawingPageState extends State<DrawingPage>
                           context,
                           MaterialPageRoute(
                               builder: (context) =>
-                                  ImageProcessingScreen(imageBytes: data)),
+                                  ImageProcessingScreen(imageBytes: data, callback: paintCubit.set,)),
                         );
                       },
                     ),

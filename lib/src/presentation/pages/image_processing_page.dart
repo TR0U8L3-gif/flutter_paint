@@ -65,7 +65,7 @@ class ImageProcessingScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           ElevatedButton(
-                            onPressed: () => cubit.restart,
+                            onPressed: () => cubit.restart(),
                             child: const Text('Reset'),
                           ),
                           ElevatedButton(
@@ -141,7 +141,7 @@ class _ControlPanelContentState extends State<ControlPanelContent> {
             padding: EdgeInsets.only(top: 16, bottom: 16),
             child: Divider(),
           ),
-          _buildFilterControls(cubit),
+          _buildFilterButtons(cubit),
           const Padding(
             padding: EdgeInsets.only(top: 16, bottom: 16),
             child: Divider(),
@@ -241,41 +241,34 @@ class _ControlPanelContentState extends State<ControlPanelContent> {
     );
   }
 
-  Widget _buildFilterControls(ImageProcessingCubit cubit) {
+  Widget _buildFilterButtons(ImageProcessingCubit cubit) {
     return Column(
       children: [
-        const Text('Filter Operations'),
-        const Text('Mask Values'),
-        TextField(
-          onChanged: (value) {
-            // Parse the input into a 2D mask
-            // For simplicity, you can add more UI components to define masks
-          },
-          decoration: const InputDecoration(hintText: 'Enter mask row by row'),
-        ),
+        const Text('Filters'),
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            Expanded(
-              child: TextField(
-                onChanged: (value) =>
-                    setState(() => divisor = int.tryParse(value) ?? 1),
-                decoration: const InputDecoration(labelText: 'Divisor'),
-                keyboardType: TextInputType.number,
-              ),
+            ElevatedButton(
+              onPressed: () => cubit.applySmoothingFilter(),
+              child: const Text('Smoothing'),
             ),
-            Expanded(
-              child: TextField(
-                onChanged: (value) =>
-                    setState(() => offset = int.tryParse(value) ?? 0),
-                decoration: const InputDecoration(labelText: 'Offset'),
-                keyboardType: TextInputType.number,
-              ),
+            ElevatedButton(
+              onPressed: () => cubit.applyMedianFilter(),
+              child: const Text('Median'),
+            ),
+            ElevatedButton(
+              onPressed: () => cubit.applySobelFilter(),
+              child: const Text('Sobel'),
+            ),
+            ElevatedButton(
+              onPressed: () => cubit.applySharpeningFilter(),
+              child: const Text('Sharpening'),
+            ),
+            ElevatedButton(
+              onPressed: () => cubit.applyGaussianBlur(),
+              child: const Text('Gaussian Blur'),
             ),
           ],
-        ),
-        ElevatedButton(
-          onPressed: () => cubit.applyFilter(mask, divisor, offset),
-          child: const Text('Apply Filter'),
         ),
       ],
     );

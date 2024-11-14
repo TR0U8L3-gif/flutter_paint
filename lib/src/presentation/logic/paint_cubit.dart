@@ -537,8 +537,6 @@ class PaintCubit extends Cubit<PaintState> {
     final stroke = ImageStroke(pixels: pixels, width: width, height: height);
     stroke.setImage(image);
 
-    clear();
-
     memento.add(stroke);
     
     safeEmit(

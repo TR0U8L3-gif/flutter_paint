@@ -2,7 +2,6 @@ import 'package:bloc/bloc.dart';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:injectable/injectable.dart';
 
 part 'image_processing_state.dart';
@@ -92,12 +91,22 @@ class ImageProcessingCubit extends Cubit<ImageProcessingState> {
     });
   }
 
-  Future<void> applyFilter(
-      List<List<int>> mask, int divisor, int offset) async {
-    // Filtering logic with mask convolution
-    if (originalImageBytes == null) return;
+  Future<void> applySmoothingFilter() async {
+    // Filtr wygładzający
+    final smoothingMask = [
+      [1, 1, 1],
+      [1, 1, 1],
+      [1, 1, 1],
+    ];
+    await applyFilter(smoothingMask, divisor: 9, offset: 0);
+  }
 
-    final codec = await ui.instantiateImageCodec(originalImageBytes!);
+  Future<void> applyMedianFilter() async {
+    // Filtr medianowy
+    final imageBytes = processedImageBytes ?? originalImageBytes;
+    if (imageBytes == null) return;
+
+    final codec = await ui.instantiateImageCodec(imageBytes);
     final frame = await codec.getNextFrame();
     final image = frame.image;
 
@@ -110,17 +119,112 @@ class ImageProcessingCubit extends Cubit<ImageProcessingState> {
 
     final newPixels = Uint8List.fromList(pixels);
 
-    final maskHeight = mask.length;
-    final maskWidth = mask[0].length;
+    for (int y = 1; y < height - 1; y++) {
+      for (int x = 1; x < width - 1; x++) {
+        List<int> rValues = [];
+        List<int> gValues = [];
+        List<int> bValues = [];
+
+        for (int dy = -1; dy <= 1; dy++) {
+          for (int dx = -1; dx <= 1; dx++) {
+            final index = ((y + dy) * width + (x + dx)) * 4;
+            rValues.add(pixels[index]);
+            gValues.add(pixels[index + 1]);
+            bValues.add(pixels[index + 2]);
+          }
+        }
+
+        rValues.sort();
+        gValues.sort();
+        bValues.sort();
+
+        final medianIndex = rValues.length ~/ 2;
+        final newIndex = (y * width + x) * 4;
+        newPixels[newIndex] = rValues[medianIndex];
+        newPixels[newIndex + 1] = gValues[medianIndex];
+        newPixels[newIndex + 2] = bValues[medianIndex];
+      }
+    }
+
+    ui.decodeImageFromPixels(
+      newPixels,
+      width,
+      height,
+      ui.PixelFormat.rgba8888,
+      (result) async {
+        final pngByteData =
+            await result.toByteData(format: ui.ImageByteFormat.png);
+        processedImageBytes = pngByteData!.buffer.asUint8List();
+        emit(ImageProcessed(imageBytes: processedImageBytes!));
+      },
+    );
+  }
+
+  Future<void> applySobelFilter() async {
+    // Filtr Sobela
+    final sobelX = [
+      [-1, 0, 1],
+      [-2, 0, 2],
+      [-1, 0, 1],
+    ];
+    final sobelY = [
+      [1, 2, 1],
+      [0, 0, 0],
+      [-1, -2, -1],
+    ];
+    await applyCombinedFilters(sobelX, sobelY);
+  }
+
+  Future<void> applySharpeningFilter() async {
+    // Filtr wyostrzający
+    final sharpeningMask = [
+      [0, -1, 0],
+      [-1, 5, -1],
+      [0, -1, 0],
+    ];
+    await applyFilter(sharpeningMask, divisor: 1, offset: 0);
+  }
+
+  Future<void> applyGaussianBlur() async {
+    // Rozmycie Gaussowskie
+    final gaussianMask = [
+      [1, 2, 1],
+      [2, 4, 2],
+      [1, 2, 1],
+    ];
+    await applyFilter(gaussianMask, divisor: 16, offset: 0);
+  }
+
+  Future<void> applyFilter(
+    List<List<int>> mask, {
+    required int divisor,
+    required int offset,
+  }) async {
+    // Filtracja splotowa z maską
+    final imageBytes = processedImageBytes ?? originalImageBytes;
+    if (imageBytes == null) return;
+
+    final codec = await ui.instantiateImageCodec(imageBytes);
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    if (byteData == null) throw Exception("Failed to retrieve pixel data.");
+
+    final pixels = byteData.buffer.asUint8List();
+    final width = image.width;
+    final height = image.height;
+
+    final newPixels = Uint8List.fromList(pixels);
 
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
         int r = 0, g = 0, b = 0;
 
-        for (int i = 0; i < maskHeight; i++) {
-          for (int j = 0; j < maskWidth; j++) {
-            final px = (y + i - maskHeight ~/ 2) * width * 4 +
-                (x + j - maskWidth ~/ 2) * 4;
+        for (int i = 0; i < mask.length; i++) {
+          for (int j = 0; j < mask[0].length; j++) {
+            final px = (y + i - mask.length ~/ 2) * width * 4 +
+                (x + j - mask[0].length ~/ 2) * 4;
             if (px < 0 || px >= pixels.length) continue;
 
             r += pixels[px] * mask[i][j];
@@ -150,10 +254,77 @@ class ImageProcessingCubit extends Cubit<ImageProcessingState> {
     );
   }
 
-  Future<void> _processImage(Function(List<int>) processPixel) async {
-    if (originalImageBytes == null) return;
+  Future<void> applyCombinedFilters(
+    List<List<int>> maskX,
+    List<List<int>> maskY,
+  ) async {
+    // Kombinacja dwóch masek (np. Sobel X i Y)
+    final imageBytes = processedImageBytes ?? originalImageBytes;
+    if (imageBytes == null) return;
 
-    final codec = await ui.instantiateImageCodec(originalImageBytes!);
+    final codec = await ui.instantiateImageCodec(imageBytes);
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+    if (byteData == null) throw Exception("Failed to retrieve pixel data.");
+
+    final pixels = byteData.buffer.asUint8List();
+    final width = image.width;
+    final height = image.height;
+
+    final newPixels = Uint8List.fromList(pixels);
+
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < width; x++) {
+        int rX = 0, gX = 0, bX = 0;
+        int rY = 0, gY = 0, bY = 0;
+
+        for (int i = 0; i < maskX.length; i++) {
+          for (int j = 0; j < maskX[0].length; j++) {
+            final px = (y + i - maskX.length ~/ 2) * width * 4 +
+                (x + j - maskX[0].length ~/ 2) * 4;
+            if (px < 0 || px >= pixels.length) continue;
+
+            rX += pixels[px] * maskX[i][j];
+            gX += pixels[px + 1] * maskX[i][j];
+            bX += pixels[px + 2] * maskX[i][j];
+
+            rY += pixels[px] * maskY[i][j];
+            gY += pixels[px + 1] * maskY[i][j];
+            bY += pixels[px + 2] * maskY[i][j];
+          }
+        }
+
+        final r = (rX.abs() + rY.abs()).clamp(0, 255);
+        final g = (gX.abs() + gY.abs()).clamp(0, 255);
+        final b = (bX.abs() + bY.abs()).clamp(0, 255);
+
+        final index = y * width * 4 + x * 4;
+        newPixels[index] = r;
+        newPixels[index + 1] = g;
+        newPixels[index + 2] = b;
+      }
+    }
+    ui.decodeImageFromPixels(
+      newPixels,
+      width,
+      height,
+      ui.PixelFormat.rgba8888,
+      (result) async {
+        final pngByteData =
+            await result.toByteData(format: ui.ImageByteFormat.png);
+        processedImageBytes = pngByteData!.buffer.asUint8List();
+        emit(ImageProcessed(imageBytes: processedImageBytes!));
+      },
+    );
+  }
+
+  Future<void> _processImage(Function(List<int>) processPixel) async {
+    final imageBytes = processedImageBytes ?? originalImageBytes;
+    if (imageBytes == null) return;
+
+    final codec = await ui.instantiateImageCodec(imageBytes);
     final frame = await codec.getNextFrame();
     final image = frame.image;
 
@@ -189,14 +360,14 @@ class ImageProcessingCubit extends Cubit<ImageProcessingState> {
     emit(ImageProcessed(imageBytes: processedImageBytes!));
   }
 
-  Future<(ui.Image? image, Uint8List? pixels, int width, int height)?> set() async {
-    if (originalImageBytes == null) return null;
-    final codec = await ui.instantiateImageCodec(originalImageBytes!);
+  Future<(ui.Image, Uint8List, int width, int height)?> set() async {
+    final imageBytes = processedImageBytes ?? originalImageBytes;
+    if (imageBytes == null) return null;
+
+    final codec = await ui.instantiateImageCodec(imageBytes);
     final frame = await codec.getNextFrame();
     final image = frame.image;
-    final width = image.width;
-    final height = image.height;
-    final pixels = (state as ImageProcessed).imageBytes;
-    return (image, pixels, width, height);
+
+    return (image, imageBytes, image.width, image.height);
   }
 }

@@ -5,7 +5,6 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter_paint/config/injectable/injectable.dart';
 import 'package:flutter_paint/core/common/domain/image_file.dart';
 import 'package:flutter_paint/core/common/domain/stroke.dart';
 import 'package:flutter_paint/core/common/domain/undo_redo.dart';
@@ -371,10 +370,14 @@ class PaintCubit extends Cubit<PaintState> {
         (failure) =>
             emit(PaintMessage(failure.message ?? 'Unknown error loading file')),
         (stroke) async {
-          await stroke.loadImage();
+          final image = await ImageStroke.renderImageFromUint8List(
+              stroke.pixels, stroke.width, stroke.height);
+          stroke.setImage(image);
+
           final then = DateTime.now();
+
           emit(PaintMessage(
-              'File loaded in ${then.difference(now).inSeconds} seconds'));
+              'File loaded in ${then.difference(now).inMilliseconds} ms'));
           memento.add(stroke);
           safeEmit(
             _lastBuildState.copyWith(
@@ -474,8 +477,14 @@ Future<Either<Failure, ImageStroke>> _loadFileInIsolate(
     return result.fold(
       (failure) => Left(failure),
       (image) {
+        final width = image.pixels[0].length;
+        final height = image.pixels.length;
         // Create the ImageStroke with pixels
-        final stroke = ImageStroke(pixels: image.pixels);
+        final stroke = ImageStroke(
+          pixels: ImageStroke.fromColors(image.pixels),
+          width: width,
+          height: height,
+        );
         return Right(stroke);
       },
     );

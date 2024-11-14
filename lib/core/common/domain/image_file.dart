@@ -100,17 +100,27 @@ class PBMFile extends ImageFile {
     final file = File(path);
     final lines = await file.readAsLines();
 
-    if (lines[0] != 'P1') {
+    // Filter out comment lines
+    final contentLines =
+        lines.where((line) => !line.trim().startsWith('#')).toList();
+
+    if (contentLines.isEmpty || contentLines[0] != 'P1') {
       throw const FormatException('Invalid PBM text format');
     }
-    final dimensions = lines[1].split(' ');
+
+    // Parse dimensions
+    final dimensions = contentLines[1].split(RegExp(r'\s+'));
     final width = int.parse(dimensions[0]);
     final height = int.parse(dimensions[1]);
 
+    // Initialize the pixel array
     pixels = List.generate(height, (_) => List.filled(width, Colors.black));
     int y = 0;
-    for (var line in lines.skip(2)) {
-      final row = line.split(' ').map((value) {
+
+    // Process pixel data
+    for (var line in contentLines.skip(2)) {
+      if (line.trim().isEmpty) continue; // Skip empty lines
+      final row = line.split(RegExp(r'\s+')).map((value) {
         final isWhite = int.parse(value) == 1;
         return isWhite ? Colors.white : Colors.black;
       }).toList();
@@ -123,25 +133,49 @@ class PBMFile extends ImageFile {
     final file = File(path);
     final bytes = await file.readAsBytes();
 
-    if (String.fromCharCode(bytes[0]) != 'P' ||
+    if (bytes.length < 2 ||
+        String.fromCharCode(bytes[0]) != 'P' ||
         String.fromCharCode(bytes[1]) != '4') {
       throw const FormatException('Invalid PBM binary format');
     }
 
-    final content =
-        String.fromCharCodes(bytes.sublist(2)).trim().split(RegExp(r'\s+'));
-    final width = int.parse(content[0]);
-    final height = int.parse(content[1]);
+    // Extract the header and ignore comments
+    int index = 2;
+    final header = StringBuffer();
+    while (header.toString().split('\n').length < 2) {
+      final char = String.fromCharCode(bytes[index++]);
+      if (char == '#') {
+        // Skip the comment line
+        while (bytes[index++] != 10); // 10 = '\n'
+      } else {
+        header.write(char);
+      }
+    }
 
+    final headerLines = header
+        .toString()
+        .split('\n')
+        .where((line) => line.trim().isNotEmpty)
+        .toList();
+    final dimensions = headerLines[0].split(RegExp(r'\s+'));
+    final width = int.parse(dimensions[0]);
+    final height = int.parse(dimensions[1]);
+
+    // Initialize the pixel array
     pixels = List.generate(height, (_) => List.filled(width, Colors.black));
-    int index = 0;
+
+    // Calculate where the pixel data starts
+    int pixelDataStartIndex = index;
+
+    // Process binary pixel data
+    int bitIndex = 0;
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
-        final byteIndex = index ~/ 8;
-        final bitIndex = 7 - (index % 8);
-        final isWhite = ((bytes[byteIndex] >> bitIndex) & 1) == 1;
+        final byte = bytes[pixelDataStartIndex + (bitIndex ~/ 8)];
+        final bit = 7 - (bitIndex % 8);
+        final isWhite = ((byte >> bit) & 1) == 1;
         pixels[y][x] = isWhite ? Colors.white : Colors.black;
-        index++;
+        bitIndex++;
       }
     }
   }
@@ -153,10 +187,10 @@ class PBMFile extends ImageFile {
 class PPMFile extends ImageFile {
   @override
   int getColorValue(Color color) {
-   final isTransparent = color.alpha == 0;
+    final isTransparent = color.alpha == 0;
     if (isTransparent) {
-    return 0xFFFFFF;
-  }
+      return 0xFFFFFF;
+    }
     return (color.red << 16) | (color.green << 8) | color.blue;
   }
 
@@ -204,17 +238,33 @@ class PPMFile extends ImageFile {
     final file = File(path);
     final lines = await file.readAsLines();
 
-    if (lines[0] != 'P3') {
+    // Filter out comment lines and trim whitespace
+    final contentLines =
+        lines.where((line) => !line.trim().startsWith('#')).toList();
+
+    if (contentLines.isEmpty || contentLines[0] != 'P3') {
       throw const FormatException('Invalid PPM text format');
     }
-    final dimensions = lines[1].split(' ');
+
+    // Parse width, height, and max color value
+    final dimensions = contentLines[1].split(RegExp(r'\s+'));
     final width = int.parse(dimensions[0]);
     final height = int.parse(dimensions[1]);
+    final maxColorValue = int.parse(contentLines[
+        2]); // Assumes no comments between dimensions and max color
 
+    if (maxColorValue != 255) {
+      throw const FormatException('Unsupported max color value (must be 255)');
+    }
+
+    // Initialize the pixels array
     pixels = List.generate(height, (_) => List.filled(width, Colors.black));
     int y = 0;
-    for (var line in lines.skip(3)) {
-      final values = line.split(' ').map(int.parse).toList();
+
+    // Process pixel data
+    for (var line in contentLines.skip(3)) {
+      if (line.trim().isEmpty) continue; // Skip empty lines
+      final values = line.split(RegExp(r'\s+')).map(int.parse).toList();
       for (int x = 0; x < width; x++) {
         final r = values[x * 3];
         final g = values[x * 3 + 1];
@@ -230,18 +280,43 @@ class PPMFile extends ImageFile {
     final file = File(path);
     final bytes = await file.readAsBytes();
 
-    if (String.fromCharCode(bytes[0]) != 'P' ||
+    if (bytes.length < 2 ||
+        String.fromCharCode(bytes[0]) != 'P' ||
         String.fromCharCode(bytes[1]) != '6') {
       throw const FormatException('Invalid PPM binary format');
     }
 
-    final content =
-        String.fromCharCodes(bytes.sublist(2)).trim().split(RegExp(r'\s+'));
-    final width = int.parse(content[0]);
-    final height = int.parse(content[1]);
+    // Read the header and skip comments
+    int index = 2;
+    final header = StringBuffer();
+    while (header.toString().split('\n').length < 3) {
+      final char = String.fromCharCode(bytes[index++]);
+      if (char == '#') {
+        // Skip the comment line
+        while (bytes[index++] != 10); // 10 = '\n'
+      } else {
+        header.write(char);
+      }
+    }
 
+    final headerLines = header
+        .toString()
+        .split('\n')
+        .where((line) => line.trim().isNotEmpty)
+        .toList();
+    final dimensions = headerLines[1].split(RegExp(r'\s+'));
+    final width = int.parse(dimensions[0]);
+    final height = int.parse(dimensions[1]);
+    final maxColorValue = int.parse(headerLines[2].trim());
+
+    if (maxColorValue != 255) {
+      throw const FormatException('Unsupported max color value (must be 255)');
+    }
+
+    // Initialize the pixels array
     pixels = List.generate(height, (_) => List.filled(width, Colors.black));
-    int index = width * height * 3;
+
+    // Process binary pixel data
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
         final r = bytes[index++];
@@ -302,17 +377,24 @@ class PGMFile extends ImageFile {
     final file = File(path);
     final lines = await file.readAsLines();
 
-    if (lines[0] != 'P2') {
+    // Ignore comment lines and parse the file
+    final contentLines =
+        lines.where((line) => !line.trim().startsWith('#')).toList();
+
+    if (contentLines[0] != 'P2') {
       throw const FormatException('Invalid PGM text format');
     }
-    final dimensions = lines[1].split(' ');
+
+    final dimensions = contentLines[1].split(' ');
     final width = int.parse(dimensions[0]);
     final height = int.parse(dimensions[1]);
 
     pixels = List.generate(height, (_) => List.filled(width, Colors.black));
     int y = 0;
-    for (var line in lines.skip(3)) {
-      final row = line.split(' ').map((value) {
+
+    for (var line in contentLines.skip(3)) {
+      if (line.trim().isEmpty) continue; // Skip empty lines
+      final row = line.split(RegExp(r'\s+')).map((value) {
         final grayValue = int.parse(value);
         return Color.fromARGB(255, grayValue, grayValue, grayValue);
       }).toList();
@@ -330,13 +412,21 @@ class PGMFile extends ImageFile {
       throw const FormatException('Invalid PGM binary format');
     }
 
-    final content =
-        String.fromCharCodes(bytes.sublist(2)).trim().split(RegExp(r'\s+'));
-    final width = int.parse(content[0]);
-    final height = int.parse(content[1]);
+    // Extract the header and ignore comments
+    final header = String.fromCharCodes(bytes.sublist(0, bytes.indexOf(0x0A)))
+        .split('\n')
+        .where((line) => !line.trim().startsWith('#'))
+        .toList();
+
+    final dimensions = header[1].split(RegExp(r'\s+'));
+    final width = int.parse(dimensions[0]);
+    final height = int.parse(dimensions[1]);
 
     pixels = List.generate(height, (_) => List.filled(width, Colors.black));
-    int index = width * height;
+    int index =
+        bytes.indexOf(0x0A, bytes.indexOf(0x0A, bytes.indexOf(0x0A) + 1) + 1) +
+            1;
+
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
         final grayValue = bytes[index++];

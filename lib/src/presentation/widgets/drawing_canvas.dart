@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_paint/core/extensions/drawing_tool_extensions.dart';
 import 'package:flutter_paint/core/extensions/offset_extensions.dart';
@@ -211,7 +210,15 @@ class _DrawingCanvasPainter extends CustomPainter {
         }
 
         if (strokeData is ImageStroke) {
-          canvas.drawImage(strokeData.image, Offset.zero, paint);
+          if(strokeData.image != null) {
+            final image = strokeData.image!;
+            canvas.drawImageRect(
+              image,
+              Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+              Rect.fromLTWH(0, 0, size.width, size.height),
+              paint,
+            );
+          }
           continue;
         }
       }

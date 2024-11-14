@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_paint/core/utils/enums/stroke_type.dart';
@@ -86,14 +88,12 @@ abstract class Stroke {
       case StrokeType.image:
         return ImageStroke(
           points: points,
-          pixels: (json['pixels'] as List<dynamic>)
-              .map((row) => (row as List<dynamic>)
-                  .map((color) => Color(color as int))
-                  .toList())
-              .toList(),
+          pixels: json['pixels'] as Uint8List,
           color: color,
           size: size,
           opacity: opacity,
+          width: int.parse(json['width'].toString()),
+          height: int.parse(json['height'].toString()),
         );
     }
   }
@@ -335,52 +335,76 @@ class SquareStroke extends Stroke {
 
 // ImageStroke class
 class ImageStroke extends Stroke {
-  final List<List<Color>> pixels;
-  late final ui.Image image;
+  final Uint8List pixels;
+  final int width;
+  final int height;
+  ui.Image? image;
 
   ImageStroke({
     super.points = const [],
     required this.pixels,
+    required this.width,
+    required this.height,
     super.color,
     super.size,
     super.opacity,
     super.strokeType = StrokeType.image,
   });
 
-  /// Converts a List<List<Color>> to a ui.Image
-  static Future<ui.Image> createImageFromColors(List<List<Color>> pixels) async{
-    final int width = pixels[0].length;
-    final int height = pixels.length;
-    final pictureRecorder = ui.PictureRecorder();
-    final canvas = Canvas(pictureRecorder);
-    final paint = Paint();
+  static Uint8List fromColors(List<List<Color>> colors) {
+    final height = colors.length;
+    final width = colors.isNotEmpty ? colors[0].length : 0;
 
-    // Drawing the colors on a canvas
+    // Create a flat list of RGBA values
+    final Uint8List rgbaBytes = Uint8List(width * height * 4);
+    int index = 0;
+
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
-        paint.color = pixels[y][x];
-        canvas.drawRect(Rect.fromLTWH(x.toDouble(), y.toDouble(), 1, 1), paint);
+        final color = colors[y][x];
+        rgbaBytes[index++] = color.red; // R
+        rgbaBytes[index++] = color.green; // G
+        rgbaBytes[index++] = color.blue; // B
+        rgbaBytes[index++] = color.alpha; // A
       }
     }
-
-    final picture = pictureRecorder.endRecording();
-    return await picture.toImage(width, height);
+    return rgbaBytes;
   }
 
-  Future<void> loadImage() async {
-    image = await createImageFromColors(pixels);
+  static Future<ui.Image> renderImageFromUint8List(
+      Uint8List rgbaBytes, int width, int height) async {
+    // Use decodeImageFromPixels for raw RGBA bytes
+    final completer = Completer<ui.Image>();
+    ui.decodeImageFromPixels(
+      rgbaBytes,
+      width,
+      height,
+      ui.PixelFormat.rgba8888,
+      (ui.Image image) {
+        completer.complete(image);
+      },
+    );
+    return completer.future;
+  }
+
+  void setImage(ui.Image? image) {
+    this.image = image;
   }
 
   @override
   Stroke copyWith({
     List<Offset>? points,
-    List<List<Color>>? pixels,
+    Uint8List? pixels,
     Color? color,
     double? size,
     double? opacity,
     ui.Image? image,
+    int? width,
+    int? height,
   }) {
     return ImageStroke(
+      width: width ?? this.width,
+      height: height ?? this.height,
       points: points ?? this.points,
       pixels: pixels ?? this.pixels,
       color: color ?? this.color,
@@ -393,13 +417,13 @@ class ImageStroke extends Stroke {
   Map<String, dynamic> toJson() {
     return {
       'points': points.map((point) => [point.dx, point.dy]).toList(),
-      'pixels': pixels
-          .map((row) => row.map((color) => color.value).toList())
-          .toList(),
+      'pixels': pixels,
       'color': color.value,
       'size': size,
       'opacity': opacity,
       'strokeType': strokeType.toString(),
+      'width': width,
+      'height': height,
     };
   }
 }

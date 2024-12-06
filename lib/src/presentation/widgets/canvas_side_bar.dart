@@ -35,6 +35,7 @@ class CanvasSideBar extends StatelessWidget {
     required this.loadFile,
     required this.filter,
     required this.edit,
+    required this.interactiveMode,
   });
 
   final GlobalKey canvasGlobalKey;
@@ -79,6 +80,9 @@ class CanvasSideBar extends StatelessWidget {
   final void Function(
     RenderRepaintBoundary? boundary,
   ) edit;
+  final void Function(
+    RenderRepaintBoundary? boundary,
+  ) interactiveMode;
 
   @override
   Widget build(BuildContext context) {
@@ -277,8 +281,9 @@ class CanvasSideBar extends StatelessWidget {
               Divider(
                 color: theme.onPrimaryContainer,
               ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              Wrap(
+                alignment: WrapAlignment.spaceEvenly,
+                runAlignment: WrapAlignment.spaceEvenly,
                 children: [
                   TextButton(
                     onPressed: () => filter(canvasGlobalKey.currentContext
@@ -289,6 +294,12 @@ class CanvasSideBar extends StatelessWidget {
                     onPressed: () => edit(canvasGlobalKey.currentContext
                         ?.findRenderObject() as RenderRepaintBoundary?),
                     child: const Text('Edit Image'),
+                  ),
+                  TextButton(
+                    onPressed: () => interactiveMode(
+                        canvasGlobalKey.currentContext?.findRenderObject()
+                            as RenderRepaintBoundary?),
+                    child: const Text('Bezier Curve'),
                   ),
                 ],
               ),

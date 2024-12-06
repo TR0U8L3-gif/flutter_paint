@@ -5,7 +5,9 @@ import 'package:flutter_paint/config/injectable/injectable.dart';
 import 'package:flutter_paint/core/common/presentation/logic/theme_provider.dart';
 import 'package:flutter_paint/core/common/presentation/widgets/app_nav_bar.dart';
 import 'package:flutter_paint/src/domain/entities/drawing_canvas_options.dart';
+import 'package:flutter_paint/src/presentation/logic/bezier_cubit.dart';
 import 'package:flutter_paint/src/presentation/logic/paint_cubit.dart';
+import 'package:flutter_paint/src/presentation/pages/bezier_page.dart';
 import 'package:flutter_paint/src/presentation/pages/color_picker.dart';
 import 'package:flutter_paint/src/presentation/pages/image_editor_page.dart';
 import 'package:flutter_paint/src/presentation/pages/image_processing_page.dart';
@@ -172,6 +174,23 @@ class _DrawingPageState extends State<DrawingPage>
                               builder: (context) => ImageEditorPage(
                                     imageBytes: data,
                                     callback: paintCubit.set,
+                                  )),
+                        );
+                      },
+                      interactiveMode: (boundary) async {
+                        final data = await paintCubit
+                            .convertCanvasToUint8List(canvasGlobalKey);
+                        if (data == null) return;
+                        if (!context.mounted) return;
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => BlocProvider(
+                                    create: (_) => BezierCubit(),
+                                    child: BezierPage(
+                                      imageBytes: data,
+                                      callback: paintCubit.set,
+                                    ),
                                   )),
                         );
                       },

@@ -22,8 +22,7 @@ class BezierState {
 }
 
 class BezierCubit extends Cubit<BezierState> {
-  BezierCubit()
-      : super(BezierState(controlPoints: [], bezierCurve: []));
+  BezierCubit() : super(BezierState(controlPoints: [], bezierCurve: []));
 
   void addControlPoint(Offset point) {
     final index = _getClosestControlPointIndex(point);
@@ -44,13 +43,16 @@ class BezierCubit extends Cubit<BezierState> {
   }
 
   void removeControlPoint(int index) {
-    final updatedPoints = List<Offset>.from(state.controlPoints)..removeAt(index);
+    final updatedPoints = List<Offset>.from(state.controlPoints)
+      ..removeAt(index);
     emit(state.copyWith(controlPoints: updatedPoints));
     _calculateBezierCurve();
   }
 
-  void addControlPointFromPercentage(double percentX, double percentY, Size screenSize) {
-    final newPoint = Offset(screenSize.width * percentX / 100, screenSize.height * percentY / 100);
+  void addControlPointFromPercentage(
+      double percentX, double percentY, Size screenSize) {
+    final newPoint = Offset(
+        screenSize.width * percentX / 100, screenSize.height * percentY / 100);
     addControlPoint(newPoint);
   }
 
@@ -95,23 +97,41 @@ class BezierCubit extends Cubit<BezierState> {
   }
 
   void setBezierDegree(int degree) {
-  if (degree < 1) return;
+    if (degree < 1) return;
 
-  final requiredPoints = degree + 1;
-  final currentPoints = state.controlPoints;
+    final requiredPoints = degree + 1;
+    final currentPoints = state.controlPoints;
 
-  if (currentPoints.length < requiredPoints) {
-    // Dodaj brakujące punkty na środku ekranu
-    final additionalPoints = List.generate(
-      requiredPoints - currentPoints.length,
-      (_) => const Offset(100, 100), // Domyślne współrzędne
-    );
-    emit(state.copyWith(controlPoints: [...currentPoints, ...additionalPoints]));
-  } else if (currentPoints.length > requiredPoints) {
-    // Usuń nadmiarowe punkty
-    emit(state.copyWith(controlPoints: currentPoints.sublist(0, requiredPoints)));
+    if (currentPoints.length < requiredPoints) {
+      // Dodaj brakujące punkty na środku ekranu
+      final additionalPoints = List.generate(
+        requiredPoints - currentPoints.length,
+        (_) => const Offset(100, 100), // Domyślne współrzędne
+      );
+      emit(state
+          .copyWith(controlPoints: [...currentPoints, ...additionalPoints]));
+    } else if (currentPoints.length > requiredPoints) {
+      // Usuń nadmiarowe punkty
+      emit(state.copyWith(
+          controlPoints: currentPoints.sublist(0, requiredPoints)));
+    }
+
+    _calculateBezierCurve();
   }
 
-  _calculateBezierCurve();
-}
+  void updateControlPoint(int index, Offset newPoint) {
+    if (index < 0 || index >= state.controlPoints.length) {
+      return; // Nieprawidłowy indeks - nic nie robimy
+    }
+
+    // Aktualizujemy punkt w liście
+    final updatedPoints = List<Offset>.from(state.controlPoints);
+    updatedPoints[index] = newPoint;
+
+    // Emitujemy nowy stan z aktualizowaną listą punktów
+    emit(state.copyWith(controlPoints: updatedPoints));
+
+    // Przeliczamy krzywą Béziera
+    _calculateBezierCurve();
+  }
 }

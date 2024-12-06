@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_paint/core/extensions/context_extensions.dart';
 import 'package:flutter_paint/src/presentation/logic/bezier_cubit.dart';
 class BezierPage extends StatefulWidget {
   const BezierPage({
@@ -26,6 +27,7 @@ class _BezierPageState extends State<BezierPage> {
   final TextEditingController _xController = TextEditingController();
   final TextEditingController _yController = TextEditingController();
   final TextEditingController _degreeController = TextEditingController();
+  final ScrollController _scrollContext = ScrollController();
 
   @override
   void initState() {
@@ -47,7 +49,7 @@ class _BezierPageState extends State<BezierPage> {
     if (degree != null && degree >= 1) {
       context.read<BezierCubit>().setBezierDegree(degree);
     } else {
-      _showErrorDialog(context, 'Enter correct bezier degree (number >= 1).');
+      _showErrorDialog(context, 'Podaj poprawny stopień (liczba całkowita >= 1).');
     }
   }
 
@@ -62,10 +64,21 @@ class _BezierPageState extends State<BezierPage> {
         _xController.clear();
         _yController.clear();
       } else {
-        _showErrorDialog(context, 'You must enter X and Y values that are inside view.');
+        _showErrorDialog(context, 'Współrzędne muszą być w granicach ekranu.');
       }
     } else {
-      _showErrorDialog(context, 'Enter valid X and Y values.');
+      _showErrorDialog(context, 'Wprowadź poprawne liczby.');
+    }
+  }
+
+  void _updatePoint(BuildContext context, int index, String newX, String newY) {
+    final x = double.tryParse(newX);
+    final y = double.tryParse(newY);
+
+    if (x != null && y != null) {
+      context.read<BezierCubit>().updateControlPoint(index, Offset(x, y));
+    } else {
+      _showErrorDialog(context, 'Podano nieprawidłowe współrzędne.');
     }
   }
 
@@ -73,7 +86,7 @@ class _BezierPageState extends State<BezierPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Error'),
+        title: const Text('Błąd'),
         content: Text(message),
         actions: [
           TextButton(
@@ -121,7 +134,7 @@ class _BezierPageState extends State<BezierPage> {
                     const SizedBox(width: 8),
                     ElevatedButton(
                       onPressed: () => _addPointFromInput(context),
-                      child: const Text('Dodaj Punkt'),
+                      child: const Text('Dodaj punkt'),
                     ),
                   ],
                 ),
@@ -132,7 +145,7 @@ class _BezierPageState extends State<BezierPage> {
                       child: TextField(
                         controller: _degreeController,
                         decoration: const InputDecoration(
-                          labelText: 'Stopień krzywej',
+                          labelText: 'Stopień krzywej Béziera',
                           border: OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.number,
@@ -173,6 +186,66 @@ class _BezierPageState extends State<BezierPage> {
                 },
               ),
             ),
+          ),
+          BlocBuilder<BezierCubit, BezierState>(
+            builder: (context, state) {
+              return Container(
+                color: context.theme.colorScheme.primary.withOpacity(0.4),
+                padding: const EdgeInsets.all(8.0),
+                height: 100,
+                width: double.infinity,
+                child: Scrollbar(
+                  controller: _scrollContext,
+                  child: ListView.builder(
+                    controller: _scrollContext,
+                    scrollDirection: Axis.horizontal,
+                    itemCount: state.controlPoints.length,
+                    itemBuilder: (context, index) {
+                      final point = state.controlPoints[index];
+                      final xController = TextEditingController(text: point.dx.toStringAsFixed(2));
+                      final yController = TextEditingController(text: point.dy.toStringAsFixed(2));
+                      return Padding(
+                        padding: EdgeInsets.only(left: 8.0, right: (8.0 + (index == state.controlPoints.length - 1 ? 88.0 : 0))),
+                        child: Column(
+                          children: [
+                            Text('Punkt ${index + 1}'),
+                            Row(
+                              children: [
+                                SizedBox(
+                                  width: 80,
+                                  child: TextField(
+                                    controller: xController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'X',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    onSubmitted: (value) => _updatePoint(context, index, value, yController.text),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                SizedBox(
+                                  width: 80,
+                                  child: TextField(
+                                    controller: yController,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Y',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    onSubmitted: (value) => _updatePoint(context, index, xController.text, value),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),

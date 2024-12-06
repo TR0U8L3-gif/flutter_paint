@@ -36,6 +36,7 @@ class CanvasSideBar extends StatelessWidget {
     required this.filter,
     required this.edit,
     required this.interactiveMode,
+    required this.shapeCreation,
   });
 
   final GlobalKey canvasGlobalKey;
@@ -83,6 +84,9 @@ class CanvasSideBar extends StatelessWidget {
   final void Function(
     RenderRepaintBoundary? boundary,
   ) interactiveMode;
+  final void Function(
+    RenderRepaintBoundary? boundary,
+  ) shapeCreation;
 
   @override
   Widget build(BuildContext context) {
@@ -300,6 +304,12 @@ class CanvasSideBar extends StatelessWidget {
                         canvasGlobalKey.currentContext?.findRenderObject()
                             as RenderRepaintBoundary?),
                     child: const Text('Bezier Curve'),
+                  ),
+                  TextButton(
+                    onPressed: () => shapeCreation(
+                        canvasGlobalKey.currentContext?.findRenderObject()
+                            as RenderRepaintBoundary?),
+                    child: const Text('Shape Creation'),
                   ),
                 ],
               ),

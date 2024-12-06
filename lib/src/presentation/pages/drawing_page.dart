@@ -7,10 +7,12 @@ import 'package:flutter_paint/core/common/presentation/widgets/app_nav_bar.dart'
 import 'package:flutter_paint/src/domain/entities/drawing_canvas_options.dart';
 import 'package:flutter_paint/src/presentation/logic/bezier_cubit.dart';
 import 'package:flutter_paint/src/presentation/logic/paint_cubit.dart';
+import 'package:flutter_paint/src/presentation/logic/shape_cubit.dart';
 import 'package:flutter_paint/src/presentation/pages/bezier_page.dart';
 import 'package:flutter_paint/src/presentation/pages/color_picker.dart';
 import 'package:flutter_paint/src/presentation/pages/image_editor_page.dart';
 import 'package:flutter_paint/src/presentation/pages/image_processing_page.dart';
+import 'package:flutter_paint/src/presentation/pages/shape_creation_page.dart';
 import 'package:flutter_paint/src/presentation/widgets/canvas_side_bar.dart';
 import 'package:flutter_paint/src/presentation/widgets/drawing_canvas.dart';
 
@@ -188,6 +190,23 @@ class _DrawingPageState extends State<DrawingPage>
                               builder: (context) => BlocProvider(
                                     create: (_) => BezierCubit(),
                                     child: BezierPage(
+                                      imageBytes: data,
+                                      callback: paintCubit.set,
+                                    ),
+                                  )),
+                        );
+                      },
+                      shapeCreation: (boundary) async {
+                        final data = await paintCubit
+                            .convertCanvasToUint8List(canvasGlobalKey);
+                        if (data == null) return;
+                        if (!context.mounted) return;
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => BlocProvider(
+                                    create: (_) => ShapeCubit(),
+                                    child: ShapeCreationPage(
                                       imageBytes: data,
                                       callback: paintCubit.set,
                                     ),

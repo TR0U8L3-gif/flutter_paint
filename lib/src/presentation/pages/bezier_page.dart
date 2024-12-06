@@ -17,7 +17,7 @@ class BezierPage extends StatefulWidget {
       callback;
 
   @override
-  _BezierPageState createState() => _BezierPageState();
+  State<BezierPage> createState() => _BezierPageState();
 }
 
 class _BezierPageState extends State<BezierPage> {
@@ -41,7 +41,6 @@ class _BezierPageState extends State<BezierPage> {
     setState(() {
       _backgroundImage = frame.image;
     });
-    widget.callback(_backgroundImage, widget.imageBytes, frame.image.width, frame.image.height);
   }
 
   void _setBezierDegree(BuildContext context) {

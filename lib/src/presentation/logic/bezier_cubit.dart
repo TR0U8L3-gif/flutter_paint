@@ -93,4 +93,25 @@ class BezierCubit extends Cubit<BezierState> {
     }
     return _calculatePoint(nextLevel, t);
   }
+
+  void setBezierDegree(int degree) {
+  if (degree < 1) return;
+
+  final requiredPoints = degree + 1;
+  final currentPoints = state.controlPoints;
+
+  if (currentPoints.length < requiredPoints) {
+    // Dodaj brakujące punkty na środku ekranu
+    final additionalPoints = List.generate(
+      requiredPoints - currentPoints.length,
+      (_) => const Offset(100, 100), // Domyślne współrzędne
+    );
+    emit(state.copyWith(controlPoints: [...currentPoints, ...additionalPoints]));
+  } else if (currentPoints.length > requiredPoints) {
+    // Usuń nadmiarowe punkty
+    emit(state.copyWith(controlPoints: currentPoints.sublist(0, requiredPoints)));
+  }
+
+  _calculateBezierCurve();
+}
 }

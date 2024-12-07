@@ -1,5 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/material.dart';
 
@@ -8,6 +11,19 @@ class Shape {
 
   final List<Offset> vertices;
   int get vertexCount => vertices.length;
+
+  Map<String, dynamic> toJson() {
+    return {
+      'vertices': vertices.map((vertex) => [vertex.dx, vertex.dy]).toList(),
+    };
+  }
+
+  factory Shape.fromJson(Map<String, dynamic> json) {
+    final vertices = (json['vertices'] as List)
+        .map((vertex) => Offset(vertex[0], vertex[1]))
+        .toList();
+    return Shape(vertices);
+  }
 }
 
 class ShapeState {
@@ -38,6 +54,37 @@ class ShapeState {
       vertexCount: vertexCount ?? this.vertexCount,
       mode: mode ?? this.mode,
       type: type ?? this.type,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'shapes': shapes.map((shape) => shape.toJson()).toList(),
+      'vertices': vertices.map((vertex) => [vertex.dx, vertex.dy]).toList(),
+      'vertexCount': vertexCount,
+      'mode': mode.name,
+      'type': type.name,
+    };
+  }
+
+  factory ShapeState.fromJson(Map<String, dynamic> json) {
+    final shapes = (json['shapes'] as List)
+        .map((shape) => Shape.fromJson(shape))
+        .toList();
+    final vertices = (json['vertices'] as List)
+        .map((vertex) => Offset(vertex[0], vertex[1]))
+        .toList();
+    final vertexCount = json['vertexCount'] as int;
+    final mode = ShapeMode.values
+        .firstWhere((element) => element.name == json['mode']);
+    final type = ShapeMoveType.values
+        .firstWhere((element) => element.name == json['type']);
+    return ShapeState(
+      shapes: shapes,
+      vertices: vertices,
+      vertexCount: vertexCount,
+      mode: mode,
+      type: type,
     );
   }
 }
@@ -195,6 +242,51 @@ class ShapeCubit extends Cubit<ShapeState> {
       shapes: updatedShapes,
       vertices: updatedVertices,
     ));
+  }
+
+  Future<void> save(BuildContext context) async {
+    try {
+      final result = await FilePicker.platform.saveFile(
+        dialogTitle: 'Choose location to save your file',
+        fileName: 'data.json',
+      );
+
+      if (result != null) {
+        final file = File(result);
+
+        // Konwersja mapy na JSON i zapis
+        await file.writeAsString(jsonEncode(state.toJson()));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('File saved at $result')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('File save canceled')),
+        );
+      }
+    } catch (e) {
+      print("Error saving file: $e");
+    }
+  }
+
+  Future<void> load(BuildContext context) async {
+    String fileContent = '';
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final file = File(result.files.single.path!);
+        final content = await file.readAsString();
+        fileContent = content;
+      }
+    } catch (e) {
+      print("Error reading file: $e");
+    }
+    final state = ShapeState.fromJson(jsonDecode(fileContent));
+    emit(state);
   }
 }
 

@@ -53,7 +53,19 @@ class _ShapeCreationPageState extends State<ShapeCreationPage> {
       bloc: cubit,
       builder: (context, state) {
         return Scaffold(
-          appBar: AppBar(title: const Text("Shape Creation")),
+          appBar: AppBar(
+            title: const Text("Shape Creation"),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.save),
+                onPressed: () => cubit.save(context),
+              ),
+              IconButton(
+                  onPressed: () => cubit.load(context),
+                  icon: const Icon(Icons.download)),
+              const SizedBox(width: 80),
+            ],
+          ),
           body: Column(
             children: [
               // Pole tekstowe do wpisania liczby wierzchołków
@@ -291,23 +303,24 @@ class _ShapeCreationPageState extends State<ShapeCreationPage> {
                                           ),
                                         ),
                                         const SizedBox(width: 8),
-                                        if(type == ShapeMoveType.move) 
-                                        SizedBox(
-                                          width: 80,
-                                          child: TextField(
-                                            controller: yController,
-                                            decoration: const InputDecoration(
-                                              labelText: 'Y',
-                                              border: OutlineInputBorder(),
+                                        if (type == ShapeMoveType.move)
+                                          SizedBox(
+                                            width: 80,
+                                            child: TextField(
+                                              controller: yController,
+                                              decoration: const InputDecoration(
+                                                labelText: 'Y',
+                                                border: OutlineInputBorder(),
+                                              ),
+                                              keyboardType:
+                                                  TextInputType.number,
+                                              onSubmitted: (value) =>
+                                                  cubit.moveShape(
+                                                      Offset(0,
+                                                          double.parse(value)),
+                                                      type),
                                             ),
-                                            keyboardType: TextInputType.number,
-                                            onSubmitted: (value) =>
-                                                cubit.moveShape(
-                                                    Offset(
-                                                        0, double.parse(value)),
-                                                    type),
                                           ),
-                                        ),
                                       ],
                                     ),
                                   ],

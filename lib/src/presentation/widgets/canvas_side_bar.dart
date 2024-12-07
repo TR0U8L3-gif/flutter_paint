@@ -37,6 +37,7 @@ class CanvasSideBar extends StatelessWidget {
     required this.edit,
     required this.interactiveMode,
     required this.shapeCreation,
+    required this.colorAreaSelection,
   });
 
   final GlobalKey canvasGlobalKey;
@@ -87,6 +88,9 @@ class CanvasSideBar extends StatelessWidget {
   final void Function(
     RenderRepaintBoundary? boundary,
   ) shapeCreation;
+  final void Function(
+    RenderRepaintBoundary? boundary,
+  ) colorAreaSelection;
 
   @override
   Widget build(BuildContext context) {
@@ -310,6 +314,12 @@ class CanvasSideBar extends StatelessWidget {
                         canvasGlobalKey.currentContext?.findRenderObject()
                             as RenderRepaintBoundary?),
                     child: const Text('Shape Creation'),
+                  ),
+                  TextButton(
+                    onPressed: () => colorAreaSelection(
+                        canvasGlobalKey.currentContext?.findRenderObject()
+                            as RenderRepaintBoundary?),
+                    child: const Text('Color Area Selection'),
                   ),
                 ],
               ),

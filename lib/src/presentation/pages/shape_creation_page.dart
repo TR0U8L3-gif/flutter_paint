@@ -32,7 +32,10 @@ class _ShapeCreationPageState extends State<ShapeCreationPage> {
   @override
   void initState() {
     super.initState();
-    _loadImage();
+    // _loadImage();
+    context.read<ShapeCubit>().stream.listen((state) {
+      _vertexCountController.text = state.vertexCount.toString();
+    });
   }
 
   Future<void> _loadImage() async {
@@ -63,12 +66,12 @@ class _ShapeCreationPageState extends State<ShapeCreationPage> {
                       child: IgnorePointer(
                         ignoring: state.vertices.isNotEmpty,
                         child: Switch(
-                          value: state.isCreatingShape,
+                          value: state.mode == ShapeMode.edit,
                           onChanged: cubit.isCreatingShape,
                         ),
                       ),
                     ),
-                    if (state.isCreatingShape) ...[
+                    if (state.mode == ShapeMode.edit) ...[
                       Expanded(
                         child: TextField(
                           controller: _vertexCountController,
@@ -98,23 +101,30 @@ class _ShapeCreationPageState extends State<ShapeCreationPage> {
               ),
               Expanded(
                 child: GestureDetector(
-                  onTapDown: (details) {
-                    if (state.isCreatingShape) {
-                      cubit.addVertex(details.localPosition);
+                  onDoubleTapDown: (details) {
+                    if (state.mode == ShapeMode.edit) {
+                      cubit.finalizeShape(false);
                     } else {
                       cubit.editNearestShape(details.localPosition);
                     }
                   },
+                  onTapDown: (details) {
+                    if (state.mode == ShapeMode.edit) {
+                      cubit.addVertex(details.localPosition);
+                    }
+                  },
                   onPanStart: (details) {
-                    if (state.isCreatingShape) {
+                    if (state.mode == ShapeMode.edit) {
                       cubit
                           .updateVerticesPointAtPosition(details.localPosition);
                     }
                   },
                   onPanUpdate: (details) {
-                    if (state.isCreatingShape) {
+                    if (state.mode == ShapeMode.edit) {
                       cubit
                           .updateVerticesPointAtPosition(details.localPosition);
+                    } else if (state.mode == ShapeMode.move) {
+                      cubit.moveShape(details.delta);
                     }
                   },
                   child: BlocBuilder<ShapeCubit, ShapeState>(
@@ -124,6 +134,7 @@ class _ShapeCreationPageState extends State<ShapeCreationPage> {
                           shapes: state.shapes,
                           vertices: state.vertices,
                           backgroundImage: _backgroundImage,
+                          isMoveMode: state.mode == ShapeMode.move,
                         ),
                         child: Container(),
                       );
@@ -131,7 +142,7 @@ class _ShapeCreationPageState extends State<ShapeCreationPage> {
                   ),
                 ),
               ),
-              if (state.isCreatingShape)
+              if (state.mode == ShapeMode.edit)
                 ColoredBox(
                   color: context.theme.colorScheme.primary.withOpacity(0.4),
                   child: Column(
@@ -224,7 +235,88 @@ class _ShapeCreationPageState extends State<ShapeCreationPage> {
                             },
                           ),
                         ),
-                      )
+                      ),
+                    ],
+                  ),
+                ),
+              if (state.mode == ShapeMode.move)
+                ColoredBox(
+                  color: context.theme.colorScheme.primary.withOpacity(0.4),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 16),
+                      TextButton(
+                        onPressed: cubit.changeMoveType,
+                        child: Text("Zmień tryb: ${state.type.name}"),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(8.0),
+                        height: 100,
+                        width: double.infinity,
+                        child: Scrollbar(
+                          controller: _scrollContext,
+                          child: ListView.builder(
+                            controller: _scrollContext,
+                            scrollDirection: Axis.horizontal,
+                            itemCount: ShapeMoveType.values.length,
+                            itemBuilder: (context, index) {
+                              final xController = TextEditingController(
+                                  text: 0.toStringAsFixed(2));
+                              final yController = TextEditingController(
+                                  text: 0.toStringAsFixed(2));
+                              final type = ShapeMoveType.values[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(
+                                    left: 8.0, right: 8.0),
+                                child: Column(
+                                  children: [
+                                    Text(type.name),
+                                    Row(
+                                      children: [
+                                        SizedBox(
+                                          width: 80,
+                                          child: TextField(
+                                            controller: xController,
+                                            decoration: const InputDecoration(
+                                              labelText: 'X',
+                                              border: OutlineInputBorder(),
+                                            ),
+                                            keyboardType: TextInputType.number,
+                                            onSubmitted: (value) =>
+                                                cubit.moveShape(
+                                                    Offset(
+                                                        double.parse(value), 0),
+                                                    type),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        if(type == ShapeMoveType.move) 
+                                        SizedBox(
+                                          width: 80,
+                                          child: TextField(
+                                            controller: yController,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Y',
+                                              border: OutlineInputBorder(),
+                                            ),
+                                            keyboardType: TextInputType.number,
+                                            onSubmitted: (value) =>
+                                                cubit.moveShape(
+                                                    Offset(
+                                                        0, double.parse(value)),
+                                                    type),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -240,11 +332,13 @@ class ShapePainter extends CustomPainter {
   final List<Shape> shapes;
   final List<Offset> vertices;
   final ui.Image? backgroundImage;
+  final bool isMoveMode;
 
   ShapePainter({
     required this.shapes,
     required this.vertices,
     required this.backgroundImage,
+    required this.isMoveMode,
   });
 
   @override
@@ -278,7 +372,7 @@ class ShapePainter extends CustomPainter {
       for (final vertex in vertices) {
         path.lineTo(vertex.dx, vertex.dy);
         final pointPaint = Paint()
-          ..color = Colors.red
+          ..color = !isMoveMode ? Colors.red : Colors.green
           ..style = PaintingStyle.fill;
         canvas.drawCircle(vertex, 4, pointPaint);
       }
